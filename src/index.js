@@ -983,11 +983,16 @@ app.delete('/api/admin/users/:id', requireAdmin(), async (c) => {
 
 // 清空所有数据库数据 (管理员)
 app.post('/api/admin/clear-data', requireAdmin(), async (c) => {
+  const { cleanall } = await c.req.json();
   const tables = ['submissions', 'topics', 'replies', 'articles', 'article_likes', 'tickets',
     'messages', 'notifications', 'activities', 'team_members', 'problem_list_items', 'problem_lists',
     'follows', 'problem_tags', 'contest_problems'];
   for (const t of tables) {
     await c.env.DB.prepare(`DELETE FROM ${t}`).run();
+  }
+  if (cleanall == 1) {
+    await c.env.DB.prepare('DELETE FROM users').run();
+    return c.json({ success: true, message: '所有数据已清空（含管理员）' });
   }
   await c.env.DB.prepare("DELETE FROM users WHERE id != 1").run();
   return c.json({ success: true, message: '所有数据已清空（保留管理员账号）' });
