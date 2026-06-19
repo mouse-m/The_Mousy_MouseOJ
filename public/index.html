@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MouseOJ</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; }
+    .container { max-width: 960px; margin: 0 auto; padding: 2rem; }
+    h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    h1 span { color: #38bdf8; }
+    .subtitle { color: #94a3b8; margin-bottom: 2rem; }
+    .nav { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
+    .nav a { color: #38bdf8; text-decoration: none; padding: 0.5rem 1rem; border: 1px solid #334155; border-radius: 8px; transition: all 0.2s; }
+    .nav a:hover { background: #1e293b; border-color: #38bdf8; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+    .card h2 { color: #38bdf8; font-size: 1.1rem; margin-bottom: 0.5rem; }
+    code { background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #93c5fd; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Mouse<span>OJ</span></h1>
+    <p class="subtitle">Cloudflare Workers + D1 + Hono — 零预算在线评测系统</p>
+
+    <div class="nav">
+      <a href="/api/home">主页聚合</a>
+      <a href="/api/problems">题库</a>
+      <a href="/api/forums">讨论区</a>
+      <a href="/api/articles">文章</a>
+      <a href="/api/contests">比赛</a>
+    </div>
+
+    <div class="card">
+      <h2>API 就绪</h2>
+      <p>后端已运行。前端页面替换此文件即可。</p>
+      <p style="margin-top:0.5rem">构建前端后，将产物放入 <code>public/</code> 目录，重新 <code>wrangler deploy</code>。</p>
+    </div>
+
+    <div class="card">
+      <h2>快速开始</h2>
+      <p>1. <code>npx wrangler d1 create mouse-oj-db</code></p>
+      <p>2. 把输出的 ID 填入 <code>wrangler.toml</code></p>
+      <p>3. <code>npx wrangler d1 execute mouse-oj-db --local --file=./schema.sql</code></p>
+      <p>4. <code>npx wrangler r2 bucket create mouse-oj-assets</code></p>
+      <p>5. <code>npx wrangler secret put VJUDGE_COOKIE</code></p>
+      <p>6. <code>npx wrangler d1 execute mouse-oj-db --remote --file=./schema.sql</code></p>
+      <p>7. <code>npx wrangler deploy</code></p>
+    </div>
+  </div>
+</body>
+</html>

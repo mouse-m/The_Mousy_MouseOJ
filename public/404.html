@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 - MouseOJ</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .container {
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+    .error-code {
+      font-size: 8rem;
+      font-weight: bold;
+      color: #38bdf8;
+      text-shadow: 0 0 30px rgba(56, 189, 248, 0.5);
+      line-height: 1;
+      margin-bottom: 1rem;
+    }
+    .error-code span:nth-child(2) {
+      color: #f472b6;
+      text-shadow: 0 0 30px rgba(244, 114, 182, 0.5);
+    }
+    .error-msg {
+      font-size: 1.2rem;
+      color: #94a3b8;
+      margin-bottom: 0.5rem;
+    }
+    .error-hint {
+      font-size: 0.9rem;
+      color: #64748b;
+      margin-bottom: 2rem;
+    }
+    .back-link {
+      display: inline-block;
+      color: #38bdf8;
+      text-decoration: none;
+      padding: 0.6rem 1.5rem;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      transition: all 0.2s;
+      font-size: 0.95rem;
+    }
+    .back-link:hover {
+      background: #1e293b;
+      border-color: #38bdf8;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+    }
+    .mouse {
+      position: fixed;
+      bottom: 20px;
+      right: 30px;
+      font-size: 2rem;
+      opacity: 0.3;
+      animation: wiggle 2s ease-in-out infinite;
+    }
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(-10deg); }
+      50% { transform: rotate(10deg); }
+    }
+    .code-block {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 1rem 1.5rem;
+      margin: 1.5rem auto;
+      max-width: 400px;
+      text-align: left;
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+    .code-block .keyword { color: #f472b6; }
+    .code-block .string { color: #86efac; }
+    .code-block .comment { color: #475569; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="error-code">
+      <span>4</span><span>0</span><span>4</span>
+    </div>
+    <div class="error-msg">Runtime Error: Page Not Found</div>
+    <div class="error-hint">这道题...啊不，这个页面不存在</div>
+
+    <div class="code-block">
+      <span class="comment">// 你访问的页面可能已被删除或从未存在</span><br>
+      <span class="keyword">if</span> (page.<span class="string">exists</span>()) {<br>
+      &nbsp;&nbsp;<span class="keyword">return</span> page.render();<br>
+      } <span class="keyword">else</span> {<br>
+      &nbsp;&nbsp;<span class="keyword">throw</span> <span class="string">'404 Not Found'</span>;<br>
+      }
+    </div>
+
+    <a href="/" class="back-link">← 返回首页</a>
+  </div>
+  <div class="mouse">🖱️</div>
+</body>
+</html>

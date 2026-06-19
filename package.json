@@ -1,0 +1,19 @@
+{
+  "name": "mouse-oj",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:frontend": "cd frontend && npm run build && cd .. && wrangler deploy",
+    "dev:frontend": "cd frontend && npm run dev",
+    "db:init:local": "wrangler d1 execute mouse-oj-db --local --file=./schema.sql",
+    "db:init:remote": "wrangler d1 execute mouse-oj-db --remote --file=./schema.sql"
+  },
+  "dependencies": {
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.80.0"
+  }
+}
