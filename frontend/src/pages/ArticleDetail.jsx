@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../AuthContext'
+import MarkdownPreview from '../components/MarkdownPreview'
 
 export default function ArticleDetail() {
   const { id } = useParams()
@@ -33,7 +34,7 @@ export default function ArticleDetail() {
       </div>
 
       <div className="card">
-        <div style={{ lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{article.content}</div>
+        <MarkdownPreview content={article.content} />
       </div>
 
       <div className="flex gap-2 mt-2">

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../AuthContext'
+import MarkdownEditor from '../components/MarkdownEditor'
 
 export default function Tickets() {
   const { user } = useAuth()
@@ -80,7 +81,7 @@ export default function Tickets() {
           </div>
           <div className="form-group">
             <label>内容</label>
-            <textarea value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} style={{ minHeight: 120 }} required />
+            <MarkdownEditor value={form.content} onChange={v => setForm(f => ({ ...f, content: v }))} minHeight={120} />
           </div>
           <button type="submit" className="btn" disabled={submitting}>{submitting ? '提交中...' : '提交'}</button>
         </form>

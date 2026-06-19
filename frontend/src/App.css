@@ -137,3 +137,25 @@ pre code {
   font-family: 'Fira Code', 'Cascadia Code', monospace;
   line-height: 1.5;
 }
+.markdown-preview h1 { font-size: 1.5rem; margin: 1rem 0 0.5rem; color: #f1f5f9; }
+.markdown-preview h2 { font-size: 1.3rem; margin: 0.9rem 0 0.4rem; color: #f1f5f9; }
+.markdown-preview h3 { font-size: 1.15rem; margin: 0.8rem 0 0.3rem; color: #e2e8f0; }
+.markdown-preview p { margin: 0.5rem 0; line-height: 1.7; }
+.markdown-preview ul, .markdown-preview ol { margin: 0.5rem 0; padding-left: 1.5rem; }
+.markdown-preview li { margin: 0.25rem 0; line-height: 1.6; }
+.markdown-preview blockquote {
+  border-left: 3px solid #38bdf8;
+  padding: 0.5rem 1rem;
+  margin: 0.75rem 0;
+  background: #1e293b;
+  border-radius: 0 6px 6px 0;
+  color: #94a3b8;
+}
+.markdown-preview table { border-collapse: collapse; margin: 0.75rem 0; width: 100%; }
+.markdown-preview th, .markdown-preview td { border: 1px solid #334155; padding: 0.5rem 0.75rem; text-align: left; }
+.markdown-preview th { background: #1e293b; color: #94a3b8; font-weight: 600; }
+.markdown-preview img { max-width: 100%; border-radius: 8px; margin: 0.5rem 0; }
+.markdown-preview hr { border: none; border-top: 1px solid #334155; margin: 1rem 0; }
+.markdown-preview a { color: #38bdf8; }
+.markdown-preview pre { margin: 0.75rem 0; }
+.markdown-preview pre code { padding: 0; background: none; }

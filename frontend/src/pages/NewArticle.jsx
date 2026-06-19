@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../AuthContext'
+import MarkdownEditor from '../components/MarkdownEditor'
 
 export default function NewArticle() {
   const { user } = useAuth()
@@ -40,7 +41,7 @@ export default function NewArticle() {
         </div>
         <div className="form-group">
           <label>内容</label>
-          <textarea value={content} onChange={e => setContent(e.target.value)} style={{ minHeight: 300 }} required />
+          <MarkdownEditor value={content} onChange={setContent} minHeight={300} />
         </div>
         {error && <div className="error-msg">{error}</div>}
         <button type="submit" className="btn" disabled={submitting}>{submitting ? '提交中...' : '发布'}</button>

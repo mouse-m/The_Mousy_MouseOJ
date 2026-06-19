@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../AuthContext'
+import MarkdownPreview from '../components/MarkdownPreview'
 
 export default function ProblemDetail() {
   const { id } = useParams()
@@ -52,7 +53,7 @@ export default function ProblemDetail() {
 
       <div className="card mb-2">
         <h2 className="card-header" style={{ border: 0, padding: 0, marginBottom: '0.75rem' }}>题目描述</h2>
-        <div style={{ lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{problem.description || '暂无描述'}</div>
+        <MarkdownPreview content={problem.description || '暂无描述'} />
       </div>
 
       {user ? (

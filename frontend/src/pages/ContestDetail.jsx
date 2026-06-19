@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '../api'
+import MarkdownPreview from '../components/MarkdownPreview'
 
 export default function ContestDetail() {
   const { id } = useParams()
@@ -21,7 +22,7 @@ export default function ContestDetail() {
       </div>
 
       <div className="card mb-2">
-        <div style={{ lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{contest.description || '暂无描述'}</div>
+        <MarkdownPreview content={contest.description || '暂无描述'} />
       </div>
 
       <h2 className="text-sm text-muted mb-1">题目列表</h2>

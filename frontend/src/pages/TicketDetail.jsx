@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../AuthContext'
+import MarkdownPreview from '../components/MarkdownPreview'
+import MarkdownEditor from '../components/MarkdownEditor'
 
 export default function TicketDetail() {
   const { id } = useParams()
@@ -46,12 +48,12 @@ export default function TicketDetail() {
           <span className="text-sm text-muted">{ticket.username} · {new Date(ticket.created_at).toLocaleString('zh-CN')}</span>
         </div>
         <h2 style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>{ticket.title}</h2>
-        <div style={{ lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{ticket.content}</div>
+        <MarkdownPreview content={ticket.content} />
 
         {ticket.reply && (
           <div className="mt-2" style={{ borderTop: '1px solid #334155', paddingTop: '1rem' }}>
             <div className="text-sm text-muted mb-1">管理员回复:</div>
-            <div style={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{ticket.reply}</div>
+            <MarkdownPreview content={ticket.reply} />
           </div>
         )}
       </div>
@@ -60,7 +62,7 @@ export default function TicketDetail() {
         <div className="card mt-2">
           <div className="form-group">
             <label>回复 / 处理备注</label>
-            <textarea value={reply} onChange={e => setReply(e.target.value)} style={{ minHeight: 100 }} />
+            <MarkdownEditor value={reply} onChange={setReply} minHeight={100} />
           </div>
           <div className="flex gap-2">
             {['pending', 'processing', 'resolved', 'closed'].map(s => (
