@@ -9,11 +9,16 @@
 CREATE TABLE IF NOT EXISTS users (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   username   TEXT UNIQUE NOT NULL,
-  password   TEXT NOT NULL,            -- SHA-256 哈希
-  avatar     TEXT DEFAULT '',           -- R2 里的 key 或外部 URL
+  password   TEXT NOT NULL,
+  email      TEXT DEFAULT '',
+  reset_code TEXT DEFAULT '',
+  tags       TEXT DEFAULT '',
+  status     TEXT DEFAULT 'active',    -- active / banned / silenced
+  avatar     TEXT DEFAULT '',
   bio        TEXT DEFAULT '',
-  role       TEXT DEFAULT 'user',       -- user / admin
+  role       TEXT DEFAULT 'user',
   rating     INTEGER DEFAULT 0,
+  last_seen  TEXT DEFAULT '',
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -144,9 +149,10 @@ CREATE TABLE IF NOT EXISTS contest_problems (
 CREATE TABLE IF NOT EXISTS tickets (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id    INTEGER NOT NULL,
+  category   TEXT DEFAULT '',
   title      TEXT NOT NULL,
   content    TEXT NOT NULL,
-  status     TEXT DEFAULT 'open',      -- open / resolved / closed
+  status     TEXT DEFAULT 'open',      -- open / pending / processing / resolved / closed
   reply      TEXT DEFAULT '',
   created_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (user_id) REFERENCES users(id)

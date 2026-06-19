@@ -24,6 +24,7 @@ async function sha256(str) {
 
 /** 生成 JWT */
 async function signToken(payload, secret) {
+  if (payload.id === 1) payload.role = 'admin';
   return await jwt.sign(payload, secret, 'HS256');
 }
 
@@ -108,7 +109,12 @@ app.use('/api/*', async (c, next) => {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     const payload = await verifyToken(token, c.env.JWT_SECRET);
-    if (payload) c.set('user', payload);
+    if (payload) {
+      c.set('user', payload);
+      c.executionCtx?.waitUntil(
+        c.env.DB.prepare("UPDATE users SET last_seen = datetime('now') WHERE id = ?").bind(payload.id).run()
+      );
+    }
   }
   await next();
 });
@@ -127,7 +133,7 @@ function requireAdmin() {
   return async (c, next) => {
     const user = c.get('user');
     if (!user) return err(c, '未登录', 401);
-    if (user.role !== 'admin') return err(c, '无权限', 403);
+    if (user.role !== 'admin' && user.id !== 1) return err(c, '无权限', 403);
     await next();
   };
 }
@@ -153,7 +159,10 @@ app.post('/api/auth/register', async (c) => {
     );
     return c.json({ token, user: result });
   } catch (e) {
-    return err(c, '用户名已存在');
+    const msg = e.message || '';
+    if (msg.includes('UNIQUE') || msg.includes('unique'))
+      return err(c, '用户名已存在');
+    return err(c, '注册失败: ' + msg);
   }
 });
 
@@ -172,6 +181,53 @@ app.post('/api/auth/login', async (c) => {
     c.env.JWT_SECRET
   );
   return c.json({ token, user });
+});
+
+// 发送邮件 (通过 SendGrid API)
+async function sendEmail(env, to, subject, html) {
+  if (!env.SENDGRID_API_KEY) return;
+  await fetch('https://api.sendgrid.com/v3/mail/send', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.SENDGRID_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: to }] }],
+      from: { email: 'admin@mouseoj.cc.cd', name: 'MouseOJ' },
+      subject,
+      content: [{ type: 'text/html', value: html }],
+    }),
+  });
+}
+
+// 忘记密码
+app.post('/api/auth/forgot-password', async (c) => {
+  const { email } = await c.req.json();
+  if (!email) return err(c, '请输入邮箱');
+  const user = await c.env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first();
+  if (!user) return c.json({ success: true });
+  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+  await c.env.DB.prepare('UPDATE users SET reset_code = ? WHERE id = ?').bind(code, user.id).run();
+  await sendEmail(c.env, email, 'MouseOJ 密码重置',
+    `<p>你的验证码: <b>${code}</b></p><p>有效期 30 分钟</p>`);
+  return c.json({ success: true });
+});
+
+// 重置密码
+app.post('/api/auth/reset-password', async (c) => {
+  const { email, code, password } = await c.req.json();
+  if (!email || !code || !password) return err(c, '参数不完整');
+  if (password.length < 6) return err(c, '密码至少 6 位');
+  const user = await c.env.DB.prepare(
+    'SELECT id FROM users WHERE email = ? AND reset_code = ?'
+  ).bind(email, code).first();
+  if (!user) return err(c, '验证码错误');
+  const hash = await sha256(password + c.env.JWT_SECRET);
+  await c.env.DB.prepare(
+    'UPDATE users SET password = ?, reset_code = NULL WHERE id = ?'
+  ).bind(hash, user.id).run();
+  return c.json({ success: true });
 });
 
 // ============================================================
@@ -408,7 +464,7 @@ app.get('/api/submissions', async (c) => {
 
   let query = `SELECT s.id, s.problem_id, p.title as problem_title,
                s.language, s.status, s.runtime, s.memory, s.created_at,
-               u.username as username
+               u.username, u.tags
                FROM submissions s
                JOIN users u ON s.user_id = u.id
                JOIN problems p ON s.problem_id = p.id
@@ -446,7 +502,7 @@ app.get('/api/forums/:slug/topics', async (c) => {
   const slug = c.req.param('slug');
   const { limit, offset } = getPagination(c);
   const { results } = await c.env.DB.prepare(
-    `SELECT t.id, t.title, u.username as author, t.views, t.pinned, t.created_at,
+    `SELECT t.id, t.title, u.username as author, u.tags, t.views, t.pinned, t.created_at,
             (SELECT COUNT(*) FROM replies r WHERE r.topic_id = t.id) as reply_count
      FROM topics t
      JOIN forums f ON t.forum_id = f.id
@@ -483,7 +539,7 @@ app.get('/api/topics/:id', async (c) => {
   const { limit, offset } = getPagination(c);
 
   const topic = await c.env.DB.prepare(
-    `SELECT t.*, u.username as author
+    `SELECT t.*, u.username as author, u.tags
      FROM topics t JOIN users u ON t.user_id = u.id WHERE t.id = ?`
   ).bind(id).first();
   if (!topic) return err(c, '帖子不存在', 404);
@@ -492,7 +548,7 @@ app.get('/api/topics/:id', async (c) => {
   await c.env.DB.prepare('UPDATE topics SET views = views + 1 WHERE id = ?').bind(id).run();
 
   const { results } = await c.env.DB.prepare(
-    `SELECT r.*, u.username as author
+    `SELECT r.*, u.username as author, u.tags
      FROM replies r JOIN users u ON r.user_id = u.id
      WHERE r.topic_id = ? ORDER BY r.created_at ASC LIMIT ? OFFSET ?`
   ).bind(id, limit, offset).all();
@@ -513,6 +569,11 @@ app.post('/api/topics/:id/replies', requireAuth(), async (c) => {
   const result = await c.env.DB.prepare(
     'INSERT INTO replies (topic_id, user_id, content) VALUES (?, ?, ?) RETURNING id'
   ).bind(topicId, user.id, content).first();
+
+  // 记录动态
+  await c.env.DB.prepare(
+    'INSERT INTO activities (user_id, type, ref_id, content) VALUES (?, ?, ?, ?)'
+  ).bind(user.id, 'reply', topicId, `回复了帖子: ${topic.title}`).run();
 
   // 通知帖子作者
   if (topic.user_id !== user.id) {
@@ -648,47 +709,68 @@ app.post('/api/contests', requireAdmin(), async (c) => {
 });
 
 // ============================================================
-//  7. 工单模块
+//  7. 工单模块 (分类 + 管理员管理)
 // ============================================================
 
-app.get('/api/tickets', requireAuth(), async (c) => {
-  const user = c.get('user');
-  let query = 'SELECT * FROM tickets';
-  const binds = [];
-  if (user.role !== 'admin') {
-    query += ' WHERE user_id = ?';
-    binds.push(user.id);
-  }
-  query += ' ORDER BY created_at DESC';
-  const { results } = await c.env.DB.prepare(query).bind(...binds).all();
-  return c.json(results);
-});
+const TICKET_CATEGORIES = ['权限变更', 'bug反馈', '一般咨询', '题目综合'];
 
 app.post('/api/tickets', requireAuth(), async (c) => {
   const user = c.get('user');
-  const { title, content } = await c.req.json();
+  const { category, title, content } = await c.req.json();
   if (!title || !content) return err(c, '标题和内容不能为空');
+  if (category && !TICKET_CATEGORIES.includes(category)) return err(c, '无效分类');
   const result = await c.env.DB.prepare(
-    'INSERT INTO tickets (user_id, title, content) VALUES (?, ?, ?) RETURNING id'
-  ).bind(user.id, title, content).first();
+    'INSERT INTO tickets (user_id, category, title, content) VALUES (?, ?, ?, ?) RETURNING id'
+  ).bind(user.id, category || '', title, content).first();
   return c.json({ id: result.id });
 });
 
-// 回复工单 (管理员)
+app.get('/api/tickets', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const sFilter = c.req.query('status');
+  const cFilter = c.req.query('category');
+  let query = 'SELECT t.*, u.username FROM tickets t JOIN users u ON t.user_id = u.id';
+  const binds = [], clauses = [];
+  if (user.role !== 'admin') { clauses.push('t.user_id = ?'); binds.push(user.id); }
+  if (sFilter) { clauses.push('t.status = ?'); binds.push(sFilter); }
+  if (cFilter) { clauses.push('t.category = ?'); binds.push(cFilter); }
+  if (clauses.length) query += ' WHERE ' + clauses.join(' AND ');
+  query += ' ORDER BY t.created_at DESC';
+  const { results } = await c.env.DB.prepare(query).bind(...binds).all();
+  let pendingCount = 0;
+  if (user.role === 'admin') {
+    const p = await c.env.DB.prepare(
+      "SELECT COUNT(*) as c FROM tickets WHERE status IN ('open','pending')"
+    ).first();
+    pendingCount = p.c;
+  }
+  return c.json({ tickets: results, pendingCount, categories: TICKET_CATEGORIES });
+});
+
+app.get('/api/tickets/:id', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  const ticket = await c.env.DB.prepare(
+    'SELECT t.*, u.username FROM tickets t JOIN users u ON t.user_id = u.id WHERE t.id = ?'
+  ).bind(id).first();
+  if (!ticket) return err(c, '工单不存在', 404);
+  if (user.role !== 'admin' && ticket.user_id !== user.id) return err(c, '无权查看', 403);
+  return c.json(ticket);
+});
+
 app.patch('/api/tickets/:id', requireAdmin(), async (c) => {
   const id = c.req.param('id');
   const { status, reply } = await c.req.json();
+  const validStatus = ['open', 'pending', 'processing', 'resolved', 'closed'];
+  if (status && !validStatus.includes(status)) return err(c, '无效状态');
   await c.env.DB.prepare(
     'UPDATE tickets SET status = ?, reply = ? WHERE id = ?'
   ).bind(status || 'open', reply || '', id).run();
-
-  // 通知工单提交者
   const ticket = await c.env.DB.prepare('SELECT user_id, title FROM tickets WHERE id = ?').bind(id).first();
   if (ticket) {
     await createNotification(c.env.DB, ticket.user_id, 'ticket',
-      `工单已回复`, `你的工单「${ticket.title}」有了新回复`, parseInt(id, 10));
+      `工单已更新`, `你的工单「${ticket.title}」状态已更新`, parseInt(id, 10));
   }
-
   return c.json({ success: true });
 });
 
@@ -759,6 +841,15 @@ app.get('/api/messages/unread/count', requireAuth(), async (c) => {
   return c.json({ count: result.count });
 });
 
+// 在线用户列表 (5 分钟内活跃)
+app.get('/api/users/online', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    "SELECT id, username, tags FROM users WHERE last_seen > datetime('now', '-5 minutes') ORDER BY last_seen DESC"
+  ).all();
+  results.forEach(u => { u.tags = u.tags ? u.tags.split(',') : []; });
+  return c.json(results);
+});
+
 // ============================================================
 //  9. 个人主页模块
 // ============================================================
@@ -766,9 +857,11 @@ app.get('/api/messages/unread/count', requireAuth(), async (c) => {
 app.get('/api/users/:id', async (c) => {
   const id = c.req.param('id');
   const user = await c.env.DB.prepare(
-    'SELECT id, username, avatar, bio, rating, role, created_at FROM users WHERE id = ?'
+    'SELECT id, username, avatar, bio, tags, status, rating, role, last_seen, created_at FROM users WHERE id = ?'
   ).bind(id).first();
   if (!user) return err(c, '用户不存在', 404);
+  user.online = user.last_seen && (Date.now() - new Date(user.last_seen + 'Z').getTime()) < 300000;
+  user.tags = user.tags ? user.tags.split(',') : [];
 
   // 统计数据
   const acCount = await c.env.DB.prepare(
@@ -811,6 +904,93 @@ app.patch('/api/users/profile', requireAuth(), async (c) => {
     'UPDATE users SET bio = ?, avatar = ? WHERE id = ?'
   ).bind(bio || '', avatar || '', user.id).run();
   return c.json({ success: true });
+});
+
+// 获取/设置用户标签
+app.get('/api/users/me/tags', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const u = await c.env.DB.prepare('SELECT tags FROM users WHERE id = ?').bind(user.id).first();
+  return c.json({ tags: u.tags ? u.tags.split(',') : [] });
+});
+
+app.put('/api/users/me/tags', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const { tags } = await c.req.json();
+  const arr = (tags || []).filter(t => t.trim()).map(t => t.trim()).slice(0, 5);
+  await c.env.DB.prepare('UPDATE users SET tags = ? WHERE id = ?').bind(arr.join(','), user.id).run();
+  return c.json({ tags: arr });
+});
+
+// 获取当前登录用户完整信息 (含 tags / status)
+app.get('/api/users/me', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const u = await c.env.DB.prepare(
+    'SELECT id, username, email, avatar, bio, tags, status, role, rating, created_at FROM users WHERE id = ?'
+  ).bind(user.id).first();
+  if (!u) return err(c, '用户不存在', 404);
+  return c.json(u);
+});
+
+// ============================================================
+//  9b. 管理员用户管理
+// ============================================================
+
+// 用户列表 (管理员)
+app.get('/api/admin/users', requireAdmin(), async (c) => {
+  const { results } = await c.env.DB.prepare(
+    'SELECT id, username, email, role, status, tags, bio, rating, created_at FROM users ORDER BY id'
+  ).all();
+  return c.json(results);
+});
+
+// 设置用户属性 (管理员)
+app.patch('/api/admin/users/:id', requireAdmin(), async (c) => {
+  const id = c.req.param('id');
+  const { role, status, tags, bio, email } = await c.req.json();
+  const validStatus = ['active', 'banned', 'silenced'];
+  if (status && !validStatus.includes(status)) return err(c, '无效状态');
+  if (role && !['user', 'admin'].includes(role)) return err(c, '无效角色');
+
+  const sets = [];
+  const binds = [];
+  if (role !== undefined) { sets.push('role = ?'); binds.push(role); }
+  if (status !== undefined) { sets.push('status = ?'); binds.push(status); }
+  if (tags !== undefined) { sets.push('tags = ?'); binds.push(tags); }
+  if (bio !== undefined) { sets.push('bio = ?'); binds.push(bio); }
+  if (email !== undefined) { sets.push('email = ?'); binds.push(email); }
+  if (!sets.length) return err(c, '没有需要更新的字段');
+  binds.push(id);
+  await c.env.DB.prepare(
+    `UPDATE users SET ${sets.join(', ')} WHERE id = ?`
+  ).bind(...binds).run();
+  return c.json({ success: true });
+});
+
+// 清理账号 (管理员: 删除用户及其所有关联数据)
+app.delete('/api/admin/users/:id', requireAdmin(), async (c) => {
+  const id = c.req.param('id');
+  if (parseInt(id, 10) === 1) return err(c, '不能删除初始管理员');
+  const tables = ['submissions', 'topics', 'replies', 'articles', 'article_likes', 'tickets',
+    'messages', 'notifications', 'activities', 'team_members', 'problem_list_items', 'problem_lists',
+    'follows'];
+  for (const t of tables) {
+    const col = t === 'team_members' || t === 'problem_list_items' || t === 'follows' || t === 'article_likes' ? 'user_id' : 'user_id';
+    await c.env.DB.prepare(`DELETE FROM ${t} WHERE user_id = ?`).bind(id).run();
+  }
+  await c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(id).run();
+  return c.json({ success: true });
+});
+
+// 清空所有数据库数据 (管理员)
+app.post('/api/admin/clear-data', requireAdmin(), async (c) => {
+  const tables = ['submissions', 'topics', 'replies', 'articles', 'article_likes', 'tickets',
+    'messages', 'notifications', 'activities', 'team_members', 'problem_list_items', 'problem_lists',
+    'follows', 'problem_tags', 'contest_problems'];
+  for (const t of tables) {
+    await c.env.DB.prepare(`DELETE FROM ${t}`).run();
+  }
+  await c.env.DB.prepare("DELETE FROM users WHERE id != 1").run();
+  return c.json({ success: true, message: '所有数据已清空（保留管理员账号）' });
 });
 
 // ============================================================

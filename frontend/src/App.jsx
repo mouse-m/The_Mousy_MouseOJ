@@ -18,6 +18,8 @@ import Contests from './pages/Contests'
 import ContestDetail from './pages/ContestDetail'
 import Profile from './pages/Profile'
 import Leaderboard from './pages/Leaderboard'
+import Tickets from './pages/Tickets'
+import TicketDetail from './pages/TicketDetail'
 import NotFound from './pages/NotFound'
 
 export default function App() {
@@ -42,6 +44,8 @@ export default function App() {
         <Route path="/contests/:id" element={<ContestDetail />} />
         <Route path="/users/:id" element={<Profile />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/tickets" element={<Tickets />} />
+        <Route path="/tickets/:id" element={<TicketDetail />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
