@@ -32,7 +32,7 @@ export default function ForumTopics() {
                     {t.pinned ? '[置顶] ' : ''}{t.title}
                   </Link>
                 </td>
-                <td className="text-sm text-muted">{t.author}</td>
+                <td className="text-sm text-muted">{t.author}{t.tags && t.tags.split(',').filter(Boolean).map(tag => <span key={tag} className="user-tag">{tag}</span>)}</td>
                 <td className="text-sm text-muted">{t.reply_count}</td>
                 <td className="text-sm text-muted">{t.views}</td>
                 <td className="text-sm text-muted">{new Date(t.created_at).toLocaleString('zh-CN')}</td>

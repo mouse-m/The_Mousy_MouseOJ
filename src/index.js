@@ -10,7 +10,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { jwt } from 'hono/jwt';
+import { sign, verify } from 'hono/jwt';
 
 // ============================================================
 //  工具函数
@@ -25,13 +25,13 @@ async function sha256(str) {
 /** 生成 JWT */
 async function signToken(payload, secret) {
   if (payload.id === 1) payload.role = 'admin';
-  return await jwt.sign(payload, secret, 'HS256');
+  return await sign(payload, secret, 'HS256');
 }
 
 /** 验证 JWT (返回 payload 或 null) */
 async function verifyToken(token, secret) {
   try {
-    return await jwt.verify(token, secret, 'HS256');
+    return await verify(token, secret, 'HS256');
   } catch {
     return null;
   }
@@ -148,22 +148,19 @@ app.post('/api/auth/register', async (c) => {
   if (username.length < 3 || username.length > 20) return err(c, '用户名 3-20 个字符');
   if (password.length < 6) return err(c, '密码至少 6 位');
 
+  const existing = await c.env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(username).first();
+  if (existing) return err(c, '用户名已存在');
+
   const hash = await sha256(password + c.env.JWT_SECRET);
-  try {
-    const result = await c.env.DB.prepare(
-      'INSERT INTO users (username, password) VALUES (?, ?) RETURNING id, username, role'
-    ).bind(username, hash).first();
-    const token = await signToken(
-      { id: result.id, username: result.username, role: result.role },
-      c.env.JWT_SECRET
-    );
-    return c.json({ token, user: result });
-  } catch (e) {
-    const msg = e.message || '';
-    if (msg.includes('UNIQUE') || msg.includes('unique'))
-      return err(c, '用户名已存在');
-    return err(c, '注册失败: ' + msg);
-  }
+  const result = await c.env.DB.prepare(
+    'INSERT INTO users (username, password) VALUES (?, ?) RETURNING id, username, role'
+  ).bind(username, hash).first();
+
+  const token = await signToken(
+    { id: result.id, username: result.username, role: result.role },
+    c.env.JWT_SECRET
+  );
+  return c.json({ token, user: result });
 });
 
 app.post('/api/auth/login', async (c) => {

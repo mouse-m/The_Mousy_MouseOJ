@@ -35,7 +35,7 @@ export default function TopicDetail() {
       <div className="card">
         <h1 className="page-title" style={{ margin: 0 }}>{data.topic.title}</h1>
         <div className="text-sm text-muted mb-2">
-          {data.topic.author} · {new Date(data.topic.created_at).toLocaleString('zh-CN')} · {data.topic.views} 次浏览
+          {data.topic.author}{data.topic.tags && data.topic.tags.split(',').filter(Boolean).map(t => <span key={t} className="user-tag">{t}</span>)} · {new Date(data.topic.created_at).toLocaleString('zh-CN')} · {data.topic.views} 次浏览
         </div>
         <div style={{ lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{data.topic.content}</div>
       </div>
@@ -44,7 +44,7 @@ export default function TopicDetail() {
       {data.replies?.map(r => (
         <div key={r.id} className="card" style={{ padding: '1rem' }}>
           <div className="flex-between mb-1">
-            <span className="text-sm" style={{ color: '#38bdf8', fontWeight: 600 }}>{r.author}</span>
+            <span className="text-sm" style={{ color: '#38bdf8', fontWeight: 600 }}>{r.author}{r.tags && r.tags.split(',').filter(Boolean).map(t => <span key={t} className="user-tag">{t}</span>)}</span>
             <span className="text-sm text-muted">{new Date(r.created_at).toLocaleString('zh-CN')}</span>
           </div>
           <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{r.content}</div>

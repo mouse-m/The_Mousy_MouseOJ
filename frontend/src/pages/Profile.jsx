@@ -26,7 +26,11 @@ export default function Profile() {
       <div className="card">
         <div className="flex-between">
           <div>
-            <h1 className="page-title" style={{ margin: 0, marginBottom: '0.25rem' }}>{profile.username}</h1>
+            <h1 className="page-title" style={{ margin: 0, marginBottom: '0.25rem' }}>
+              <span className={`${profile.online ? 'online-dot' : 'offline-dot'}`}></span>
+              {profile.username}
+              {profile.tags?.map(t => <span key={t} className="user-tag">{t}</span>)}
+            </h1>
             <div className="text-sm text-muted">
               {profile.role === 'admin' ? <span className="badge badge-ok">管理员</span> : null}
               {' '}加入于 {new Date(profile.created_at).toLocaleString('zh-CN')}
