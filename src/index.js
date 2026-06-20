@@ -972,6 +972,7 @@ app.get('/api/users/by-name/:username', async (c) => {
 });
 
 app.get('/api/users/:id', async (c) => {
+  const currentUser = c.get('user');
   const id = c.req.param('id');
   const user = await c.env.DB.prepare(
     'SELECT id, username, avatar, bio, tags, status, rating, role, last_seen, created_at FROM users WHERE id = ?'
@@ -1001,6 +1002,16 @@ app.get('/api/users/:id', async (c) => {
     topics: topicCount.count,
   };
 
+  // 关注 / 粉丝数
+  const followerCount = await c.env.DB.prepare(
+    'SELECT COUNT(*) as count FROM follows WHERE followee_id = ?'
+  ).bind(id).first();
+  const followingCount = await c.env.DB.prepare(
+    'SELECT COUNT(*) as count FROM follows WHERE follower_id = ?'
+  ).bind(id).first();
+  user.follower_count = followerCount.count;
+  user.following_count = followingCount.count;
+
   // 最近 AC 的题目
   const { results: recentAc } = await c.env.DB.prepare(
     `SELECT DISTINCT p.id, p.title FROM submissions s
@@ -1009,6 +1020,14 @@ app.get('/api/users/:id', async (c) => {
      ORDER BY s.created_at DESC LIMIT 5`
   ).bind(id).all();
   user.recent_ac = recentAc;
+
+  // 当前登录用户是否关注
+  if (currentUser && currentUser.id !== parseInt(id, 10)) {
+    const f = await c.env.DB.prepare(
+      'SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = ?'
+    ).bind(currentUser.id, id).first();
+    user.is_following = !!f;
+  }
 
   return c.json(user);
 });
