@@ -1,18 +1,58 @@
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
+import { api } from '../api'
 import './Layout.css'
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const [locked, setLocked] = useState(() => !!localStorage.getItem('locked'))
+  const [unlockPwd, setUnlockPwd] = useState('')
+  const [unlockErr, setUnlockErr] = useState('')
 
   const handleLogout = () => {
     logout()
     navigate('/')
   }
 
+  const handleLock = () => {
+    localStorage.setItem('locked', '1')
+    setLocked(true)
+  }
+
+  const handleUnlock = async () => {
+    try {
+      await api.post('/auth/verify-password', { password: unlockPwd })
+      localStorage.removeItem('locked')
+      setLocked(false)
+      setUnlockPwd('')
+      setUnlockErr('')
+    } catch (e) {
+      setUnlockErr('密码错误')
+    }
+  }
+
   return (
     <div className="layout">
+      {locked && (
+        <div style={{
+          position: 'fixed', inset: 0, background: '#0f172a', zIndex: 9999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem'
+        }}>
+          <div style={{ fontSize: '2rem', fontFamily: "'Press Start 2P', monospace", letterSpacing: '2px' }}>
+            Mouse<span style={{ color: '#38bdf8' }}>OJ</span>
+          </div>
+          <div className="text-sm text-muted">已锁定</div>
+          <input type="password" value={unlockPwd} onChange={e => setUnlockPwd(e.target.value)}
+            placeholder="输入密码解锁" autoFocus
+            onKeyDown={e => e.key === 'Enter' && handleUnlock()}
+            style={{ padding: '0.5rem 1rem', borderRadius: 6, border: '1px solid #334155', background: '#1e293b', color: '#e2e8f0', width: 240, textAlign: 'center' }} />
+          {unlockErr && <span className="text-sm" style={{ color: '#f87171' }}>{unlockErr}</span>}
+          <button className="btn btn-sm" onClick={handleUnlock}>解锁</button>
+        </div>
+      )}
+
       <nav className="navbar">
         <div className="nav-inner">
           <Link to="/" className="nav-brand">Mouse<span>OJ</span></Link>
@@ -32,6 +72,7 @@ export default function Layout({ children }) {
             {user ? (
               <div className="nav-user">
                 <Link to={`/users/${user.id}`} className="nav-username">{user.username}</Link>
+                <button className="btn btn-sm btn-secondary" onClick={handleLock}>锁定</button>
                 <button className="btn btn-sm btn-secondary" onClick={handleLogout}>退出</button>
               </div>
             ) : (
@@ -44,6 +85,14 @@ export default function Layout({ children }) {
         </div>
       </nav>
       <main className="main">{children}</main>
+      <footer style={{
+        textAlign: 'center', padding: '1.5rem', fontSize: '0.8rem', color: '#475569',
+        borderTop: '1px solid #1e293b', marginTop: '2rem'
+      }}>
+        <a href="https://github.com/mouse-m/The_Mousy_MouseOJ" target="_blank" rel="noopener noreferrer" style={{ color: '#64748b' }}>GitHub</a>
+        <span style={{ margin: '0 0.5rem' }}>·</span>
+        Made by minermouse
+      </footer>
     </div>
   )
 }

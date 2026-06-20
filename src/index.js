@@ -184,6 +184,31 @@ app.post('/api/auth/login', async (c) => {
   return c.json({ token, user });
 });
 
+// 修改密码 (需要旧密码)
+app.patch('/api/auth/password', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const { old_password, new_password } = await c.req.json();
+  if (!old_password || !new_password) return err(c, '旧密码和新密码不能为空');
+  if (new_password.length < 6) return err(c, '新密码至少 6 位');
+  const row = await c.env.DB.prepare('SELECT password FROM users WHERE id = ?').bind(user.id).first();
+  const hash = await sha256(old_password + c.env.JWT_SECRET);
+  if (row.password !== hash) return err(c, '旧密码错误');
+  const newHash = await sha256(new_password + c.env.JWT_SECRET);
+  await c.env.DB.prepare('UPDATE users SET password = ? WHERE id = ?').bind(newHash, user.id).run();
+  return c.json({ success: true });
+});
+
+// 验证密码 (用于解锁)
+app.post('/api/auth/verify-password', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const { password } = await c.req.json();
+  if (!password) return err(c, '请输入密码');
+  const row = await c.env.DB.prepare('SELECT password FROM users WHERE id = ?').bind(user.id).first();
+  const hash = await sha256(password + c.env.JWT_SECRET);
+  if (row.password !== hash) return err(c, '密码错误', 401);
+  return c.json({ success: true });
+});
+
 // 发送邮件 (通过 SendGrid API)
 async function sendEmail(env, to, subject, html) {
   if (!env.SENDGRID_API_KEY) return;
@@ -936,6 +961,16 @@ app.get('/api/users/online', async (c) => {
 //  9. 个人主页模块
 // ============================================================
 
+// 通过用户名查询用户
+app.get('/api/users/by-name/:username', async (c) => {
+  const username = c.req.param('username');
+  const u = await c.env.DB.prepare(
+    'SELECT id, username, role, avatar FROM users WHERE username = ?'
+  ).bind(username).first();
+  if (!u) return err(c, '用户不存在', 404);
+  return c.json(u);
+});
+
 app.get('/api/users/:id', async (c) => {
   const id = c.req.param('id');
   const user = await c.env.DB.prepare(
@@ -1163,7 +1198,7 @@ app.get('/api/home', async (c) => {
     // 动态 (仅已登录时显示关注的人)
     user
       ? c.env.DB.prepare(
-          `SELECT a.*, u.username, u.avatar FROM activities a
+          `SELECT a.*, u.username, u.avatar, u.role FROM activities a
            JOIN users u ON u.id = a.user_id
            JOIN follows f ON f.followee_id = a.user_id
            WHERE f.follower_id = ?
@@ -1428,11 +1463,23 @@ app.get('/api/users/:id/activities', async (c) => {
   return c.json(results);
 });
 
+// 发布动态
+app.post('/api/activities', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const { content } = await c.req.json();
+  if (!content?.trim()) return err(c, '内容不能为空');
+  if (content.length > 500) return err(c, '动态内容不能超过 500 字');
+  await c.env.DB.prepare(
+    'INSERT INTO activities (user_id, type, content) VALUES (?, ?, ?)'
+  ).bind(user.id, 'status', content).run();
+  return c.json({ success: true });
+});
+
 // 全局动态
 app.get('/api/activities', async (c) => {
   const { limit, offset } = getPagination(c);
   const { results } = await c.env.DB.prepare(
-    `SELECT a.*, u.username, u.avatar FROM activities a
+    `SELECT a.*, u.username, u.avatar, u.role FROM activities a
      JOIN users u ON u.id = a.user_id
      ORDER BY a.id DESC LIMIT ? OFFSET ?`
   ).bind(limit, offset).all();
@@ -1444,7 +1491,7 @@ app.get('/api/feed', requireAuth(), async (c) => {
   const user = c.get('user');
   const { limit, offset } = getPagination(c);
   const { results } = await c.env.DB.prepare(
-    `SELECT a.*, u.username, u.avatar FROM activities a
+    `SELECT a.*, u.username, u.avatar, u.role FROM activities a
      JOIN users u ON u.id = a.user_id
      JOIN follows f ON f.followee_id = a.user_id
      WHERE f.follower_id = ?

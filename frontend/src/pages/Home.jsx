@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../AuthContext'
-import { formatTime, getAvatarUrl } from '../utils'
+import { formatTime, getAvatarUrl, usernameColor, renderContent } from '../utils'
 
 export default function Home() {
   const [data, setData] = useState(null)
@@ -85,10 +85,10 @@ export default function Home() {
             <div key={a.id} className="flex-between mb-1 text-sm">
               <div className="flex gap-1" style={{ alignItems: 'center' }}>
                 <img src={getAvatarUrl(a.username, a.avatar)} alt="" style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }} />
-                <Link to={`/users/${a.user_id}`} style={{ color: '#38bdf8', fontWeight: 600 }}>{a.username}</Link>
-                {' '}{a.content}
+                <Link to={`/users/${a.user_id}`} style={{ color: usernameColor(a.role), fontWeight: 600 }}>{a.username}</Link>
+                <span className="text-sm" style={{ color: '#94a3b8' }} dangerouslySetInnerHTML={{ __html: renderContent(a.content) }} />
               </div>
-              <span className="text-muted">{formatTime(a.created_at)}</span>
+              <span className="text-muted text-nowrap">{formatTime(a.created_at)}</span>
             </div>
           ))}
         </div>

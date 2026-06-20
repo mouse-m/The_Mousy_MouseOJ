@@ -11,6 +11,23 @@ export default function Profile() {
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef()
   const isMe = me && me.id === parseInt(id)
+  const [showPwdForm, setShowPwdForm] = useState(false)
+  const [oldPwd, setOldPwd] = useState('')
+  const [newPwd, setNewPwd] = useState('')
+  const [pwdMsg, setPwdMsg] = useState('')
+
+  const handleChangePwd = async () => {
+    if (!oldPwd || !newPwd) return
+    if (newPwd.length < 6) { setPwdMsg('新密码至少 6 位'); return }
+    try {
+      await api.patch('/auth/password', { old_password: oldPwd, new_password: newPwd })
+      setPwdMsg('密码修改成功')
+      setOldPwd('')
+      setNewPwd('')
+    } catch (e) {
+      setPwdMsg(e.message)
+    }
+  }
 
   const load = () => api.get(`/users/${id}`).then(setProfile).catch(() => {})
 

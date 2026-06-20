@@ -10,6 +10,7 @@ import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 function Preview({ content }) {
   if (!content) return <span style={{ color: '#64748b', fontSize: '0.85rem' }}>预览</span>
+  const processed = content.replace(/@(\S+)/g, '[$&](/users/by-name/$1)')
   return (
     <div className="markdown-preview">
       <ReactMarkdown
@@ -28,7 +29,7 @@ function Preview({ content }) {
             return <code className={className} {...props}>{children}</code>
           }
         }}
-      >{content}</ReactMarkdown>
+      >{processed}</ReactMarkdown>
     </div>
   )
 }

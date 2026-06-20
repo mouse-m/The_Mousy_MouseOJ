@@ -9,6 +9,7 @@ import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 export default function MarkdownPreview({ content }) {
   if (!content) return null
+  const processed = content.replace(/@(\S+)/g, '[$&](/users/by-name/$1)')
   return (
     <div className="markdown-preview">
       <ReactMarkdown
@@ -27,7 +28,7 @@ export default function MarkdownPreview({ content }) {
             return <code className={className} {...props}>{children}</code>
           }
         }}
-      >{content}</ReactMarkdown>
+      >{processed}</ReactMarkdown>
     </div>
   )
 }
