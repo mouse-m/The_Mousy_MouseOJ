@@ -51,7 +51,7 @@ export default function Home() {
           {data.hotTopics?.length ? data.hotTopics.map(t => (
             <div key={t.id} style={{ marginBottom: '0.5rem' }}>
               <Link to={`/topics/${t.id}`}>{t.title}</Link>
-              <div className="text-sm text-muted">{t.author} · {t.views} 次浏览</div>
+              <div className="text-sm text-muted"><Link to={`/users/${t.user_id}`} className="text-muted">{t.author}</Link> · {t.views} 次浏览</div>
             </div>
           )) : <p className="text-sm text-muted">暂无热门话题</p>}
         </div>
@@ -61,7 +61,7 @@ export default function Home() {
           {data.recentArticles?.length ? data.recentArticles.map(a => (
             <div key={a.id} style={{ marginBottom: '0.5rem' }}>
               <Link to={`/articles/${a.id}`}>{a.title}</Link>
-              <div className="text-sm text-muted">{a.author}</div>
+              <div className="text-sm text-muted"><Link to={`/users/${a.user_id}`} className="text-muted">{a.author}</Link></div>
             </div>
           )) : <p className="text-sm text-muted">暂无文章</p>}
         </div>

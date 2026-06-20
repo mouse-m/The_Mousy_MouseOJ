@@ -122,7 +122,7 @@ export default function Tickets() {
                   <td className="text-sm">{t.category || '-'}</td>
                   <td><Link to={`/tickets/${t.id}`}>{t.title}</Link></td>
                   <td><span className={`badge ${badgeClass}`}>{t.status}</span></td>
-                  {isAdmin && <td className="text-sm text-muted">{t.username}</td>}
+                  {isAdmin && <td className="text-sm text-muted"><Link to={`/users/${t.user_id}`} className="text-muted">{t.username}</Link></td>}
                   <td className="text-sm text-muted">{formatTime(t.created_at)}</td>
                   {isAdmin && (
                     <td>

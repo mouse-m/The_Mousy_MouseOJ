@@ -47,7 +47,7 @@ export default function Submissions() {
             {subs.map(s => (
               <tr key={s.id}>
                 <td className="text-sm text-muted">{s.id}</td>
-                <td className="text-sm">{s.username}{s.tags && s.tags.split(',').filter(Boolean).map(t => <span key={t} className="user-tag">{t}</span>)}</td>
+                <td className="text-sm"><Link to={`/users/${s.user_id}`} style={{ color: 'inherit' }}>{s.username}</Link>{s.tags && s.tags.split(',').filter(Boolean).map(t => <span key={t} className="user-tag">{t}</span>)}</td>
                 <td className="text-sm"><Link to={`/problems/${s.problem_id}`}>{s.problem_title}</Link></td>
                 <td className="text-sm text-muted">{s.language}</td>
                 <td><Link to={`/submissions/${s.id}`} style={{ color: 'inherit' }}>{statusBadge(s.status)}</Link></td>

@@ -73,7 +73,7 @@ export default function TicketDetail() {
             <span className={`badge ${badgeClass}`} style={{ marginLeft: '0.5rem' }}>{ticket.status}</span>
           </div>
           <div className="flex gap-1">
-            <span className="text-sm text-muted">{ticket.username} · {formatTime(ticket.created_at)}</span>
+            <span className="text-sm text-muted"><Link to={`/users/${ticket.user_id}`} className="text-muted">{ticket.username}</Link> · {formatTime(ticket.created_at)}</span>
             {isOwner && !editing && (
               <>
                 <button className="btn btn-sm btn-secondary" onClick={() => { setEditTitle(ticket.title); setEditContent(ticket.content); setEditing(true) }}>编辑</button>

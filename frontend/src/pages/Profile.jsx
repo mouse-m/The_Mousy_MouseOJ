@@ -69,7 +69,7 @@ export default function Profile() {
                   <input type="file" accept="image/*" ref={fileRef} onChange={handleAvatarUpload} style={{ display: 'none' }} />
                   <button className="btn btn-sm btn-secondary" style={{ position: 'absolute', bottom: -4, right: -4, padding: '0.15rem 0.4rem', fontSize: '0.7rem' }}
                     onClick={() => fileRef.current?.click()} disabled={uploading}>
-                    {uploading ? '...' : '换'}
+                    {uploading ? '...' : '更换头像'}
                   </button>
                 </>
               )}

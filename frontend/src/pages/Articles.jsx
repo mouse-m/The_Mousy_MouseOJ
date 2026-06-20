@@ -30,7 +30,7 @@ export default function Articles() {
             {articles.map(a => (
               <tr key={a.id}>
                 <td><Link to={`/articles/${a.id}`}>{a.title}</Link></td>
-                <td className="text-sm text-muted">{a.author}</td>
+                <td className="text-sm text-muted"><Link to={`/users/${a.user_id}`} className="text-muted">{a.author}</Link></td>
                 <td className="text-sm text-muted">{a.likes}</td>
                 <td className="text-sm text-muted">{formatTime(a.created_at)}</td>
               </tr>

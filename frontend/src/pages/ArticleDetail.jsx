@@ -31,7 +31,7 @@ export default function ArticleDetail() {
       <Link to="/articles" className="text-sm text-muted">← 返回文章列表</Link>
       <h1 className="page-title mt-2">{article.title}</h1>
       <div className="text-sm text-muted mb-2">
-        {article.author} · {formatTime(article.created_at)}
+        <Link to={`/users/${article.user_id}`} style={{ color: '#38bdf8', fontWeight: 600 }}>{article.author}</Link> · {formatTime(article.created_at)}
       </div>
 
       <div className="card">

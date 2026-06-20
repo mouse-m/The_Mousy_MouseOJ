@@ -459,7 +459,7 @@ app.get('/api/submissions', async (c) => {
   const filterUser = c.req.query('user');
   const filterProblem = c.req.query('problem');
 
-  let query = `SELECT s.id, s.problem_id, p.title as problem_title,
+  let query = `SELECT s.id, s.user_id, s.problem_id, p.title as problem_title,
                s.language, s.status, s.runtime, s.memory, s.created_at,
                u.username, u.tags
                FROM submissions s
@@ -499,7 +499,7 @@ app.get('/api/forums/:slug/topics', async (c) => {
   const slug = c.req.param('slug');
   const { limit, offset } = getPagination(c);
   const { results } = await c.env.DB.prepare(
-    `SELECT t.id, t.title, u.username as author, u.tags, t.views, t.pinned, t.created_at,
+    `SELECT t.id, t.title, u.username as author, u.id as user_id, u.tags, t.views, t.pinned, t.created_at,
             (SELECT COUNT(*) FROM replies r WHERE r.topic_id = t.id) as reply_count
      FROM topics t
      JOIN forums f ON t.forum_id = f.id
@@ -622,7 +622,7 @@ app.delete('/api/topics/:id', requireAuth(), async (c) => {
 app.get('/api/articles', async (c) => {
   const { limit, offset } = getPagination(c);
   const { results } = await c.env.DB.prepare(
-    `SELECT a.id, a.title, u.username as author, a.likes, a.created_at
+    `SELECT a.id, u.id as user_id, a.title, u.username as author, a.likes, a.created_at
      FROM articles a JOIN users u ON a.user_id = u.id
      ORDER BY a.created_at DESC LIMIT ? OFFSET ?`
   ).bind(limit, offset).all();
@@ -1112,13 +1112,13 @@ app.get('/api/home', async (c) => {
     ).all(),
     // 热门讨论 (浏览量最高的 5 条)
     c.env.DB.prepare(
-      `SELECT t.id, t.title, u.username as author, t.views
+      `SELECT t.id, t.title, u.username as author, u.id as user_id, t.views
        FROM topics t JOIN users u ON t.user_id = u.id
        ORDER BY t.views DESC LIMIT 5`
     ).all(),
     // 最新文章
     c.env.DB.prepare(
-      `SELECT a.id, a.title, u.username as author
+      `SELECT a.id, a.title, u.username as author, u.id as user_id
        FROM articles a JOIN users u ON a.user_id = u.id
        ORDER BY a.created_at DESC LIMIT 5`
     ).all(),

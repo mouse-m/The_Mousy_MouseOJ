@@ -65,7 +65,7 @@ export default function TopicDetail() {
           <div>
             <h1 className="page-title" style={{ margin: 0 }}>{data.topic.title}</h1>
             <div className="text-sm text-muted mb-2">
-              {data.topic.author}{data.topic.tags && data.topic.tags.split(',').filter(Boolean).map(t => <span key={t} className="user-tag">{t}</span>)} · {formatTime(data.topic.created_at)} · {data.topic.views} 次浏览
+              <Link to={`/users/${data.topic.user_id}`} style={{ color: '#38bdf8', fontWeight: 600 }}>{data.topic.author}</Link>{data.topic.tags && data.topic.tags.split(',').filter(Boolean).map(t => <span key={t} className="user-tag">{t}</span>)} · {formatTime(data.topic.created_at)} · {data.topic.views} 次浏览
             </div>
           </div>
           {isAuthor && !editing && (
@@ -92,7 +92,7 @@ export default function TopicDetail() {
       {data.replies?.map(r => (
         <div key={r.id} className="card" style={{ padding: '1rem' }}>
           <div className="flex-between mb-1">
-            <span className="text-sm" style={{ color: '#38bdf8', fontWeight: 600 }}>{r.author}{r.tags && r.tags.split(',').filter(Boolean).map(t => <span key={t} className="user-tag">{t}</span>)}</span>
+            <span className="text-sm" style={{ color: '#38bdf8', fontWeight: 600 }}><Link to={`/users/${r.user_id}`} style={{ color: '#38bdf8', fontWeight: 600 }}>{r.author}</Link>{r.tags && r.tags.split(',').filter(Boolean).map(t => <span key={t} className="user-tag">{t}</span>)}</span>
             <span className="text-sm text-muted">{formatTime(r.created_at)}</span>
           </div>
           <MarkdownPreview content={r.content} />
