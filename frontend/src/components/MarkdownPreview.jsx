@@ -1,6 +1,7 @@
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import remarkGfm from 'remark-gfm'
+import remarkEmoji from 'remark-emoji'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
@@ -11,7 +12,7 @@ export default function MarkdownPreview({ content }) {
   return (
     <div className="markdown-preview">
       <ReactMarkdown
-        remarkPlugins={[remarkMath, remarkGfm]}
+        remarkPlugins={[remarkMath, remarkGfm, remarkEmoji]}
         rehypePlugins={[rehypeKatex]}
         components={{
           code({ node, inline, className, children, ...props }) {

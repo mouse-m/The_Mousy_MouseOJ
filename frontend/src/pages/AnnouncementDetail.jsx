@@ -22,6 +22,8 @@ export default function AnnouncementDetail() {
       <div className="card">
         <h1 className="page-title" style={{ margin: 0, marginBottom: '0.5rem' }}>{a.title}</h1>
         <div className="text-sm text-muted mb-2">{formatTime(a.created_at)}</div>
+      </div>
+      <div className="announcement-content">
         <MarkdownPreview content={a.content} />
       </div>
     </div>
