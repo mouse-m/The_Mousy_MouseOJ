@@ -75,6 +75,14 @@ CREATE TABLE IF NOT EXISTS forums (
   slug TEXT UNIQUE NOT NULL
 );
 -- 初始版块（启动时自动插入）
+CREATE TABLE IF NOT EXISTS announcements (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  title      TEXT NOT NULL,
+  content    TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
 INSERT OR IGNORE INTO forums (id, name, slug) VALUES (1, '站务公告', 'announce');
 INSERT OR IGNORE INTO forums (id, name, slug) VALUES (2, '算法交流', 'algorithm');
 INSERT OR IGNORE INTO forums (id, name, slug) VALUES (3, '灌水闲聊', 'water');

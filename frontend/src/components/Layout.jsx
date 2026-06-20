@@ -24,6 +24,7 @@ export default function Layout({ children }) {
             <Link to="/leaderboard">排行榜</Link>
             <Link to="/submissions">提交</Link>
             <Link to="/tickets">工单</Link>
+            {user && (user.role === 'admin' || user.id === 1) && <Link to="/announcements">公告</Link>}
           </div>
           <div className="nav-sep"></div>
           <div className="nav-right">

@@ -1056,14 +1056,50 @@ app.post('/api/admin/clear-data', requireAdmin(), async (c) => {
 });
 
 // ============================================================
-//  10. 主页聚合接口
+//  10. 公告系统 (仅管理员)
+// ============================================================
+
+app.get('/api/announcements', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    'SELECT id, title, content, created_at, updated_at FROM announcements ORDER BY created_at DESC'
+  ).all();
+  return c.json(results);
+});
+
+app.post('/api/announcements', requireAdmin(), async (c) => {
+  const { title, content } = await c.req.json();
+  if (!title || !content) return err(c, '标题和内容不能为空');
+  const result = await c.env.DB.prepare(
+    'INSERT INTO announcements (title, content) VALUES (?, ?) RETURNING id'
+  ).bind(title, content).first();
+  return c.json({ id: result.id });
+});
+
+app.patch('/api/announcements/:id', requireAdmin(), async (c) => {
+  const id = c.req.param('id');
+  const { title, content } = await c.req.json();
+  if (!title || !content) return err(c, '标题和内容不能为空');
+  await c.env.DB.prepare(
+    "UPDATE announcements SET title = ?, content = ?, updated_at = datetime('now') WHERE id = ?"
+  ).bind(title, content, id).run();
+  return c.json({ success: true });
+});
+
+app.delete('/api/announcements/:id', requireAdmin(), async (c) => {
+  const id = c.req.param('id');
+  await c.env.DB.prepare('DELETE FROM announcements WHERE id = ?').bind(id).run();
+  return c.json({ success: true });
+});
+
+// ============================================================
+//  11. 主页聚合接口
 // ============================================================
 
 app.get('/api/home', async (c) => {
   const [announcements, upcomingContests, hotTopics, recentArticles, recentProblems] = await Promise.all([
-    // 站务公告 (最新 3 条)
+    // 公告 (最新 5 条)
     c.env.DB.prepare(
-      `SELECT id, title, created_at FROM topics WHERE forum_id = 1 ORDER BY created_at DESC LIMIT 3`
+      `SELECT id, title, content, created_at FROM announcements ORDER BY created_at DESC LIMIT 5`
     ).all(),
     // 即将开始的比赛
     c.env.DB.prepare(

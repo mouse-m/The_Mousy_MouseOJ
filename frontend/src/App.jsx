@@ -20,6 +20,7 @@ import Profile from './pages/Profile'
 import Leaderboard from './pages/Leaderboard'
 import Tickets from './pages/Tickets'
 import TicketDetail from './pages/TicketDetail'
+import Announcements from './pages/Announcements'
 import NotFound from './pages/NotFound'
 
 export default function App() {
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="/contests" element={<Contests />} />
         <Route path="/contests/:id" element={<ContestDetail />} />
         <Route path="/users/:id" element={<Profile />} />
+        <Route path="/announcements" element={<Announcements />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/tickets" element={<Tickets />} />
         <Route path="/tickets/:id" element={<TicketDetail />} />

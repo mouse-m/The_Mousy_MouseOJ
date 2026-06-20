@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
+import { useAuth } from '../AuthContext'
 import { formatTime } from '../utils'
 
 export default function Home() {
   const [data, setData] = useState(null)
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin' || user?.id === 1
 
   useEffect(() => {
     api.get('/home').then(setData).catch(() => {})
@@ -14,19 +17,21 @@ export default function Home() {
 
   return (
     <div className="container">
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2rem', fontFamily: "'Press Start 2P', monospace", letterSpacing: '2px' }}>
+      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <h1 style={{ fontSize: '2rem', fontFamily: "'Press Start 2P', monospace", letterSpacing: '2px', margin: 0 }}>
           Mouse<span style={{ color: '#38bdf8' }}>OJ</span>
         </h1>
+        {isAdmin && <Link to="/announcements" className="btn btn-sm btn-secondary">管理公告</Link>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
         <div className="card">
           <div className="card-header"><h2>公告</h2></div>
           {data.announcements?.length ? data.announcements.map(a => (
-            <div key={a.id} style={{ marginBottom: '0.5rem' }}>
-              <Link to={`/topics/${a.id}`}>{a.title}</Link>
+            <div key={a.id} style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #1e293b' }}>
+              <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{a.title}</div>
               <div className="text-sm text-muted">{formatTime(a.created_at)}</div>
+              <div className="markdown-preview text-sm mt-1" style={{ color: '#cbd5e1' }}>{a.content}</div>
             </div>
           )) : <p className="text-sm text-muted">暂无公告</p>}
         </div>
