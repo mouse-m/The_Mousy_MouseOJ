@@ -3,11 +3,13 @@ import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import remarkGfm from 'remark-gfm'
 import remarkEmoji from 'remark-emoji'
+import remarkDirective from 'remark-directive'
 import rehypeKatex from 'rehype-katex'
 import rehypeRaw from 'rehype-raw'
 import 'katex/dist/katex.min.css'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { rehypeTableMerge, remarkDirectiveHandler, preprocessContent } from '../markdownPlugins'
 
 function MermaidBlock({ code }) {
   const ref = useRef()
@@ -21,31 +23,64 @@ function MermaidBlock({ code }) {
   return <div className="mermaid" ref={ref}>{code}</div>
 }
 
+function CodeBlock({ node, children, className }) {
+  const lang = (node?.lang || '').trim()
+  const meta = (node?.meta || '').trim()
+  const language = lang
+  const lineNumbers = meta.includes('line-numbers')
+  const linesMatch = meta.match(/lines=(\d+)-(\d+)/)
+  const highlightStart = linesMatch ? parseInt(linesMatch[1]) : null
+  const highlightEnd = linesMatch ? parseInt(linesMatch[2]) : null
+  const code = String(children).replace(/\n$/, '')
+
+  if (language === 'mermaid') return <MermaidBlock code={code} />
+
+  if (lineNumbers || highlightStart) {
+    const lines = code.split('\n')
+    return (
+      <div className={`code-block ${lineNumbers ? 'with-line-nums' : ''}`}>
+        <SyntaxHighlighter
+          style={oneDark}
+          language={language || 'cpp'}
+          PreTag="div"
+          showLineNumbers={lineNumbers}
+          wrapLines={highlightStart != null}
+          lineProps={lineNumber => {
+            if (highlightStart != null && lineNumber >= highlightStart && lineNumber <= highlightEnd) {
+              return { style: { background: 'rgba(56, 189, 248, 0.12)', display: 'block' } }
+            }
+            return {}
+          }}
+        >
+          {code}
+        </SyntaxHighlighter>
+      </div>
+    )
+  }
+
+  return (
+    <SyntaxHighlighter style={oneDark} language={language || 'cpp'} PreTag="div">
+      {code}
+    </SyntaxHighlighter>
+  )
+}
+
 function Preview({ content }) {
   if (!content) return <span style={{ color: '#64748b', fontSize: '0.85rem' }}>预览</span>
-  const processed = content.replace(/@(\S+)/g, '[$&](/users/by-name/$1)')
+  const processed = preprocessContent(content)
+  const withMentions = processed.replace(/@(\S+)/g, '[$&](/users/by-name/$1)')
   return (
     <div className="markdown-preview">
       <ReactMarkdown
-        remarkPlugins={[remarkMath, remarkGfm, remarkEmoji]}
-        rehypePlugins={[rehypeKatex, rehypeRaw]}
+        remarkPlugins={[remarkMath, remarkGfm, remarkEmoji, remarkDirective, remarkDirectiveHandler]}
+        rehypePlugins={[rehypeKatex, rehypeRaw, rehypeTableMerge]}
         components={{
           code({ node, inline, className, children, ...props }) {
-            const match = /language-(\w+)/.exec(className || '')
-            if (!inline && match) {
-              if (match[1] === 'mermaid') {
-                return <MermaidBlock code={String(children)} />
-              }
-              return (
-                <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div">
-                  {String(children).replace(/\n$/, '')}
-                </SyntaxHighlighter>
-              )
-            }
+            if (!inline) return <CodeBlock node={node} className={className}>{children}</CodeBlock>
             return <code className={className} {...props}>{children}</code>
           }
         }}
-      >{processed}</ReactMarkdown>
+      >{withMentions}</ReactMarkdown>
     </div>
   )
 }
