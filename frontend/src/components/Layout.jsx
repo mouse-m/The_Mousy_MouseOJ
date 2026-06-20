@@ -91,6 +91,8 @@ export default function Layout({ children }) {
       }}>
         <a href="https://github.com/mouse-m/The_Mousy_MouseOJ" target="_blank" rel="noopener noreferrer" style={{ color: '#64748b' }}>GitHub</a>
         <span style={{ margin: '0 0.5rem' }}>·</span>
+        <a href="mailto:mousy@mouseoj.cc.cd" style={{ color: '#64748b' }}>申诉</a>
+        <span style={{ margin: '0 0.5rem' }}>·</span>
         Made by minermouse
       </footer>
     </div>

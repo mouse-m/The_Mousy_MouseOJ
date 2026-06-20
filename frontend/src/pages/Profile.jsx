@@ -134,7 +134,21 @@ export default function Profile() {
         </div>
       )}
 
-      <div className="flex gap-2">
+      {isMe && (
+        <div className="card mt-2">
+          <div className="card-header"><h2>修改密码</h2></div>
+          <div className="flex gap-1" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            <input type="password" value={oldPwd} onChange={e => setOldPwd(e.target.value)} placeholder="旧密码"
+              style={{ flex: 1, minWidth: 120 }} />
+            <input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} placeholder="新密码"
+              style={{ flex: 1, minWidth: 120 }} />
+            <button className="btn btn-sm" onClick={handleChangePwd}>修改</button>
+          </div>
+          {pwdMsg && <div className={`text-sm mt-1 ${pwdMsg === '密码修改成功' ? '' : 'text-danger'}`} style={{ color: pwdMsg === '密码修改成功' ? '#4ade80' : '#f87171' }}>{pwdMsg}</div>}
+        </div>
+      )}
+
+      <div className="flex gap-2 mt-2">
         <Link to={`/users/${id}/following`} className="btn btn-sm btn-secondary">关注列表</Link>
         <Link to={`/users/${id}/followers`} className="btn btn-sm btn-secondary">粉丝列表</Link>
         <Link to={`/users/${id}/activities`} className="btn btn-sm btn-secondary">动态</Link>
