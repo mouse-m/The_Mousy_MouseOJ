@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../AuthContext'
@@ -8,6 +8,9 @@ export default function Profile() {
   const { id } = useParams()
   const { user: me } = useAuth()
   const [profile, setProfile] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef()
+  const isMe = me && me.id === parseInt(id)
 
   const load = () => api.get(`/users/${id}`).then(setProfile).catch(() => {})
 
@@ -20,23 +23,69 @@ export default function Profile() {
     } catch {}
   }
 
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 500 * 1024) { alert('头像不能超过 500KB'); return }
+    setUploading(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch('/api/upload/avatar', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: form,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '上传失败')
+      setProfile(p => ({ ...p, avatar: data.url }))
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   if (!profile) return <div className="container"><div className="loading">加载中...</div></div>
 
   return (
     <div className="container" style={{ maxWidth: 700 }}>
       <div className="card">
         <div className="flex-between">
-          <div>
-            <h1 className="page-title" style={{ margin: 0, marginBottom: '0.25rem' }}>
-              <span className={`${profile.online ? 'online-dot' : 'offline-dot'}`}></span>
-              {profile.username}
-              {profile.tags?.map(t => <span key={t} className="user-tag">{t}</span>)}
-            </h1>
-            <div className="text-sm text-muted">
-              {profile.role === 'admin' ? <span className="badge badge-ok">管理员</span> : null}
-              {' '}加入于 {formatTime(profile.created_at)}
+          <div className="flex gap-2" style={{ alignItems: 'center' }}>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              {profile.avatar ? (
+                <img src={profile.avatar} alt="avatar"
+                  style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{
+                  width: 64, height: 64, borderRadius: '50%',
+                  background: '#334155', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', fontSize: '1.5rem', color: '#94a3b8'
+                }}>{profile.username.slice(0, 1).toUpperCase()}</div>
+              )}
+              {isMe && (
+                <>
+                  <input type="file" accept="image/*" ref={fileRef} onChange={handleAvatarUpload} style={{ display: 'none' }} />
+                  <button className="btn btn-sm btn-secondary" style={{ position: 'absolute', bottom: -4, right: -4, padding: '0.15rem 0.4rem', fontSize: '0.7rem' }}
+                    onClick={() => fileRef.current?.click()} disabled={uploading}>
+                    {uploading ? '...' : '换'}
+                  </button>
+                </>
+              )}
             </div>
-            {profile.bio && <p className="text-sm mt-2" style={{ color: '#94a3b8' }}>{profile.bio}</p>}
+            <div>
+              <h1 className="page-title" style={{ margin: 0, marginBottom: '0.25rem' }}>
+                <span className={`${profile.online ? 'online-dot' : 'offline-dot'}`}></span>
+                {profile.username}
+                {profile.tags?.map(t => <span key={t} className="user-tag">{t}</span>)}
+              </h1>
+              <div className="text-sm text-muted">
+                {profile.role === 'admin' ? <span className="badge badge-ok">管理员</span> : null}
+                {' '}加入于 {formatTime(profile.created_at)}
+              </div>
+              {profile.bio && <p className="text-sm mt-1" style={{ color: '#94a3b8' }}>{profile.bio}</p>}
+            </div>
           </div>
           {me && me.id !== profile.id && (
             <button className={`btn btn-sm ${profile.is_following ? 'btn-secondary' : ''}`} onClick={handleFollow}>

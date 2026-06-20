@@ -40,7 +40,7 @@ async function verifyToken(token, secret) {
 /** 简单分页参数 */
 function getPagination(c) {
   const page  = Math.max(1, parseInt(c.req.query('page')  || '1', 10));
-  const limit = Math.min(50, Math.max(1, parseInt(c.req.query('limit') || '20', 10)));
+  const limit = Math.min(50, Math.max(1, parseInt(c.req.query('limit') || '25', 10)));
   return { page, limit, offset: (page - 1) * limit };
 }
 
@@ -749,6 +749,7 @@ app.post('/api/tickets', requireAuth(), async (c) => {
 
 app.get('/api/tickets', requireAuth(), async (c) => {
   const user = c.get('user');
+  const { limit, offset } = getPagination(c);
   const sFilter = c.req.query('status');
   const cFilter = c.req.query('category');
   let query = 'SELECT t.*, u.username FROM tickets t JOIN users u ON t.user_id = u.id';
@@ -757,7 +758,8 @@ app.get('/api/tickets', requireAuth(), async (c) => {
   if (sFilter) { clauses.push('t.status = ?'); binds.push(sFilter); }
   if (cFilter) { clauses.push('t.category = ?'); binds.push(cFilter); }
   if (clauses.length) query += ' WHERE ' + clauses.join(' AND ');
-  query += ' ORDER BY t.created_at DESC';
+  query += ' ORDER BY t.created_at DESC LIMIT ? OFFSET ?';
+  binds.push(limit, offset);
   const { results } = await c.env.DB.prepare(query).bind(...binds).all();
   let pendingCount = 0;
   if (user.role === 'admin') {
@@ -1060,9 +1062,10 @@ app.post('/api/admin/clear-data', requireAdmin(), async (c) => {
 // ============================================================
 
 app.get('/api/announcements', async (c) => {
+  const { limit, offset } = getPagination(c);
   const { results } = await c.env.DB.prepare(
-    'SELECT id, title, content, created_at, updated_at FROM announcements ORDER BY created_at DESC'
-  ).all();
+    'SELECT id, title, content, created_at, updated_at FROM announcements ORDER BY created_at DESC LIMIT ? OFFSET ?'
+  ).bind(limit, offset).all();
   return c.json(results);
 });
 
@@ -1096,7 +1099,8 @@ app.delete('/api/announcements/:id', requireAdmin(), async (c) => {
 // ============================================================
 
 app.get('/api/home', async (c) => {
-  const [announcements, upcomingContests, hotTopics, recentArticles, recentProblems] = await Promise.all([
+  const user = c.get('user');
+  const [announcements, upcomingContests, hotTopics, recentArticles, recentProblems, feed] = await Promise.all([
     // 公告 (最新 5 条)
     c.env.DB.prepare(
       `SELECT id, title, content, created_at FROM announcements ORDER BY created_at DESC LIMIT 5`
@@ -1122,6 +1126,20 @@ app.get('/api/home', async (c) => {
     c.env.DB.prepare(
       'SELECT id, title FROM problems ORDER BY id DESC LIMIT 5'
     ).all(),
+    // 动态 (已登录则优先关注的人, 否则全站最新)
+    user
+      ? c.env.DB.prepare(
+          `SELECT a.*, u.username, u.avatar FROM activities a
+           JOIN users u ON u.id = a.user_id
+           JOIN follows f ON f.followee_id = a.user_id
+           WHERE f.follower_id = ?
+           ORDER BY a.id DESC LIMIT 10`
+        ).bind(user.id).all()
+      : c.env.DB.prepare(
+          `SELECT a.*, u.username, u.avatar FROM activities a
+           JOIN users u ON u.id = a.user_id
+           ORDER BY a.id DESC LIMIT 10`
+        ).all(),
   ]);
 
   return c.json({
@@ -1130,6 +1148,7 @@ app.get('/api/home', async (c) => {
     hotTopics: hotTopics.results,
     recentArticles: recentArticles.results,
     recentProblems: recentProblems.results,
+    feed: feed.results,
   });
 });
 

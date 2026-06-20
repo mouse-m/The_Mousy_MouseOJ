@@ -7,15 +7,17 @@ import { formatTime } from '../utils'
 export default function Announcements() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin' || user?.id === 1
+  const limit = 25
   const [list, setList] = useState([])
+  const [page, setPage] = useState(1)
   const [showForm, setShowForm] = useState(false)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [editId, setEditId] = useState(null)
 
-  const load = () => api.get('/announcements').then(setList).catch(() => {})
+  const load = () => api.get('/announcements', { page, limit }).then(setList).catch(() => {})
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [page])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -96,6 +98,12 @@ export default function Announcements() {
         </div>
       ))}
       {list.length === 0 && <p className="text-sm text-muted text-center" style={{ padding: '2rem' }}>暂无公告</p>}
+
+      <div className="pagination">
+        <button className="btn btn-sm btn-secondary" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>上一页</button>
+        <span className="text-sm text-muted" style={{ alignSelf: 'center' }}>第 {page} 页</span>
+        <button className="btn btn-sm btn-secondary" disabled={list.length < limit} onClick={() => setPage(p => p + 1)}>下一页</button>
+      </div>
     </div>
   )
 }

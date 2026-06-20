@@ -12,7 +12,7 @@ export default function Submissions() {
   const [subs, setSubs] = useState([])
   const [page, setPage] = useState(1)
   const [filter, setFilter] = useState({ user: '', problem: '' })
-  const limit = 30
+  const limit = 25
 
   useEffect(() => {
     const params = { page, limit }

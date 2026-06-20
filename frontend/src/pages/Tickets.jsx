@@ -7,6 +7,7 @@ import { formatTime } from '../utils'
 
 export default function Tickets() {
   const { user } = useAuth()
+  const limit = 25
   const [data, setData] = useState(null)
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState('')
@@ -17,7 +18,7 @@ export default function Tickets() {
   const isAdmin = user?.role === 'admin' || user?.id === 1
 
   const load = () => {
-    const params = { page }
+    const params = { page, limit }
     if (status) params.status = status
     if (category) params.category = category
     api.get('/tickets', params).then(setData).catch(() => {})
@@ -143,6 +144,12 @@ export default function Tickets() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="pagination">
+        <button className="btn btn-sm btn-secondary" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>上一页</button>
+        <span className="text-sm text-muted" style={{ alignSelf: 'center' }}>第 {page} 页</span>
+        <button className="btn btn-sm btn-secondary" disabled={!data.tickets || data.tickets.length < limit} onClick={() => setPage(p => p + 1)}>下一页</button>
       </div>
     </div>
   )

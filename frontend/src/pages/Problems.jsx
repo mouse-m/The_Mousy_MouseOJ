@@ -7,7 +7,7 @@ export default function Problems() {
   const [tags, setTags] = useState([])
   const [page, setPage] = useState(1)
   const [filter, setFilter] = useState({ tag: '', difficulty: '', q: '' })
-  const limit = 30
+  const limit = 25
 
   useEffect(() => {
     api.get('/tags').then(setTags).catch(() => {})

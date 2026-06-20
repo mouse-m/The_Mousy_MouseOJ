@@ -8,7 +8,7 @@ export default function Articles() {
   const [articles, setArticles] = useState([])
   const [page, setPage] = useState(1)
   const { user } = useAuth()
-  const limit = 30
+  const limit = 25
 
   useEffect(() => {
     api.get('/articles', { page, limit }).then(setArticles).catch(() => {})

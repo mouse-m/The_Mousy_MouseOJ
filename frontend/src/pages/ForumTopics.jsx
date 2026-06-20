@@ -9,7 +9,7 @@ export default function ForumTopics() {
   const { user } = useAuth()
   const [topics, setTopics] = useState([])
   const [page, setPage] = useState(1)
-  const limit = 30
+  const limit = 25
 
   useEffect(() => {
     api.get(`/forums/${slug}/topics`, { page, limit }).then(setTopics).catch(() => {})

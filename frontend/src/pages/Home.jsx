@@ -75,6 +75,23 @@ export default function Home() {
           )) : <p className="text-sm text-muted">暂无题目</p>}
         </div>
       </div>
+
+      {data.feed?.length > 0 && (
+        <div className="card mt-2">
+          <div className="card-header"><h2>{user ? '关注动态' : '最新动态'}</h2></div>
+          {data.feed.map(a => (
+            <div key={a.id} className="flex-between mb-1 text-sm">
+              <div className="flex gap-1" style={{ alignItems: 'center' }}>
+                {a.avatar ? <img src={a.avatar} alt="" style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }} />
+                  : <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#334155', fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>{a.username[0]}</div>}
+                <Link to={`/users/${a.user_id}`} style={{ color: '#38bdf8', fontWeight: 600 }}>{a.username}</Link>
+                {' '}{a.content}
+              </div>
+              <span className="text-muted">{formatTime(a.created_at)}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

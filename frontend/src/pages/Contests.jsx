@@ -7,7 +7,7 @@ export default function Contests() {
   const [contests, setContests] = useState([])
   const [status, setStatus] = useState('')
   const [page, setPage] = useState(1)
-  const limit = 30
+  const limit = 25
 
   useEffect(() => {
     const params = { page, limit }
