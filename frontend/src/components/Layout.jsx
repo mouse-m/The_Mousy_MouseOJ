@@ -21,6 +21,7 @@ export default function Layout({ children }) {
             <Link to="/forums">讨论区</Link>
             <Link to="/articles">文章</Link>
             <Link to="/contests">比赛</Link>
+            <Link to="/feed">动态</Link>
             <Link to="/leaderboard">排行榜</Link>
             <Link to="/submissions">提交</Link>
             <Link to="/tickets">工单</Link>

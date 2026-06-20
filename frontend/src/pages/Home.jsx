@@ -78,9 +78,9 @@ export default function Home() {
         )) : <p className="text-sm text-muted">暂无题目</p>}
       </div>
 
-      {data.feed?.length > 0 && (
+      {user && data.feed?.length > 0 && (
         <div className="card mt-2">
-          <div className="card-header"><h2>{user ? '关注动态' : '最新动态'}</h2></div>
+          <div className="card-header"><h2>关注动态</h2></div>
           {data.feed.map(a => (
             <div key={a.id} className="flex-between mb-1 text-sm">
               <div className="flex gap-1" style={{ alignItems: 'center' }}>

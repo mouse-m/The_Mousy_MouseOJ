@@ -156,6 +156,10 @@ app.post('/api/auth/register', async (c) => {
     'INSERT INTO users (username, password) VALUES (?, ?) RETURNING id, username, role'
   ).bind(username, hash).first();
 
+  await c.env.DB.prepare(
+    'INSERT INTO activities (user_id, type, content) VALUES (?, ?, ?)'
+  ).bind(result.id, 'register', '注册了账号').run();
+
   const token = await signToken(
     { id: result.id, username: result.username, role: result.role },
     c.env.JWT_SECRET
@@ -1156,7 +1160,7 @@ app.get('/api/home', async (c) => {
     c.env.DB.prepare(
       'SELECT id, title FROM problems ORDER BY id DESC LIMIT 5'
     ).all(),
-    // 动态 (已登录则优先关注的人, 否则全站最新)
+    // 动态 (仅已登录时显示关注的人)
     user
       ? c.env.DB.prepare(
           `SELECT a.*, u.username, u.avatar FROM activities a
@@ -1165,11 +1169,7 @@ app.get('/api/home', async (c) => {
            WHERE f.follower_id = ?
            ORDER BY a.id DESC LIMIT 10`
         ).bind(user.id).all()
-      : c.env.DB.prepare(
-          `SELECT a.*, u.username, u.avatar FROM activities a
-           JOIN users u ON u.id = a.user_id
-           ORDER BY a.id DESC LIMIT 10`
-        ).all(),
+      : Promise.resolve({ results: [] }),
   ]);
 
   return c.json({
@@ -1425,6 +1425,17 @@ app.get('/api/users/:id/activities', async (c) => {
   const { results } = await c.env.DB.prepare(
     'SELECT * FROM activities WHERE user_id = ? ORDER BY id DESC LIMIT ? OFFSET ?'
   ).bind(id, limit, offset).all();
+  return c.json(results);
+});
+
+// 全局动态
+app.get('/api/activities', async (c) => {
+  const { limit, offset } = getPagination(c);
+  const { results } = await c.env.DB.prepare(
+    `SELECT a.*, u.username, u.avatar FROM activities a
+     JOIN users u ON u.id = a.user_id
+     ORDER BY a.id DESC LIMIT ? OFFSET ?`
+  ).bind(limit, offset).all();
   return c.json(results);
 });
 
