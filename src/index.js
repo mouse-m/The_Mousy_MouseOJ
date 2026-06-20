@@ -955,6 +955,7 @@ app.get('/api/users/:id', async (c) => {
 app.patch('/api/users/profile', requireAuth(), async (c) => {
   const user = c.get('user');
   const { bio, avatar } = await c.req.json();
+  if (bio && bio.length > 2000) return err(c, '个人简介不能超过 2000 字');
   await c.env.DB.prepare(
     'UPDATE users SET bio = ?, avatar = ? WHERE id = ?'
   ).bind(bio || '', avatar || '', user.id).run();
@@ -1005,6 +1006,7 @@ app.patch('/api/admin/users/:id', requireAdmin(), async (c) => {
   const validStatus = ['active', 'banned', 'silenced'];
   if (status && !validStatus.includes(status)) return err(c, '无效状态');
   if (role && !['user', 'admin'].includes(role)) return err(c, '无效角色');
+  if (bio && bio.length > 2000) return err(c, '个人简介不能超过 2000 字');
 
   const sets = [];
   const binds = [];
