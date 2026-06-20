@@ -779,7 +779,10 @@ app.get('/api/tickets/:id', requireAuth(), async (c) => {
   ).bind(id).first();
   if (!ticket) return err(c, '工单不存在', 404);
   if (user.role !== 'admin' && ticket.user_id !== user.id) return err(c, '无权查看', 403);
-  return c.json(ticket);
+  const replies = await c.env.DB.prepare(
+    'SELECT r.*, u.username FROM ticket_replies r JOIN users u ON r.user_id = u.id WHERE r.ticket_id = ? ORDER BY r.created_at ASC'
+  ).bind(id).all();
+  return c.json({ ...ticket, replies: replies.results });
 });
 
 app.patch('/api/tickets/:id', requireAuth(), async (c) => {
@@ -828,6 +831,24 @@ app.delete('/api/tickets/:id', requireAuth(), async (c) => {
   if (!ticket) return err(c, '工单不存在', 404);
   if (ticket.user_id !== user.id && user.role !== 'admin') return err(c, '无权删除', 403);
   await c.env.DB.prepare('DELETE FROM tickets WHERE id = ?').bind(id).run();
+  return c.json({ success: true });
+});
+
+// 工单回复
+app.post('/api/tickets/:id/replies', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  const { content } = await c.req.json();
+  if (!content?.trim()) return err(c, '回复内容不能为空');
+  const ticket = await c.env.DB.prepare('SELECT * FROM tickets WHERE id = ?').bind(id).first();
+  if (!ticket) return err(c, '工单不存在', 404);
+  if (ticket.user_id !== user.id && user.role !== 'admin') return err(c, '无权回复', 403);
+  await c.env.DB.prepare(
+    'INSERT INTO ticket_replies (ticket_id, user_id, content) VALUES (?, ?, ?)'
+  ).bind(id, user.id, content).run();
+  if (ticket.user_id !== user.id) {
+    await createNotification(c.env.DB, ticket.user_id, 'ticket', `工单已回复`, content, parseInt(id, 10));
+  }
   return c.json({ success: true });
 });
 
@@ -1067,6 +1088,15 @@ app.get('/api/announcements', async (c) => {
     'SELECT id, title, content, created_at, updated_at FROM announcements ORDER BY created_at DESC LIMIT ? OFFSET ?'
   ).bind(limit, offset).all();
   return c.json(results);
+});
+
+app.get('/api/announcements/:id', async (c) => {
+  const id = c.req.param('id');
+  const a = await c.env.DB.prepare(
+    'SELECT id, title, content, created_at, updated_at FROM announcements WHERE id = ?'
+  ).bind(id).first();
+  if (!a) return err(c, '公告不存在', 404);
+  return c.json(a);
 });
 
 app.post('/api/announcements', requireAdmin(), async (c) => {

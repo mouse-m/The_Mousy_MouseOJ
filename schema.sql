@@ -154,6 +154,18 @@ CREATE TABLE IF NOT EXISTS contest_problems (
 );
 
 -- ─── 工单 ───
+-- ─── 工单回复 ───
+CREATE TABLE IF NOT EXISTS ticket_replies (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  ticket_id  INTEGER NOT NULL,
+  user_id    INTEGER NOT NULL,
+  content    TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (ticket_id) REFERENCES tickets(id),
+  FOREIGN KEY (user_id)   REFERENCES users(id)
+);
+CREATE INDEX IF NOT EXISTS idx_ticket_reply ON ticket_replies(ticket_id);
+
 CREATE TABLE IF NOT EXISTS tickets (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id    INTEGER NOT NULL,

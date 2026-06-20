@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../AuthContext'
-import { formatTime } from '../utils'
+import { formatTime, getAvatarUrl } from '../utils'
 
 export default function Profile() {
   const { id } = useParams()
@@ -54,16 +54,8 @@ export default function Profile() {
         <div className="flex-between">
           <div className="flex gap-2" style={{ alignItems: 'center' }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
-              {profile.avatar ? (
-                <img src={profile.avatar} alt="avatar"
-                  style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover' }} />
-              ) : (
-                <div style={{
-                  width: 64, height: 64, borderRadius: '50%',
-                  background: '#334155', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', fontSize: '1.5rem', color: '#94a3b8'
-                }}>{profile.username.slice(0, 1).toUpperCase()}</div>
-              )}
+              <img src={getAvatarUrl(profile.username, profile.avatar)} alt="avatar"
+                style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover' }} />
               {isMe && (
                 <>
                   <input type="file" accept="image/*" ref={fileRef} onChange={handleAvatarUpload} style={{ display: 'none' }} />

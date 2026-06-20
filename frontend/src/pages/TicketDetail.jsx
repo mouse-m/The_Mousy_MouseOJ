@@ -21,10 +21,10 @@ export default function TicketDetail() {
 
   useEffect(() => { load() }, [id])
 
-  const handleUpdate = async () => {
+  const handleReply = async () => {
     if (!reply.trim()) return
     try {
-      await api.patch(`/tickets/${id}`, { reply })
+      await api.post(`/tickets/${id}/replies`, { content: reply })
       setReply('')
       load()
     } catch (err) {
@@ -101,27 +101,40 @@ export default function TicketDetail() {
           <>
             <h2 style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>{ticket.title}</h2>
             <MarkdownPreview content={ticket.content} />
-            {ticket.reply && (
-              <div className="mt-2" style={{ borderTop: '1px solid #334155', paddingTop: '1rem' }}>
-                <div className="text-sm text-muted mb-1">管理员回复:</div>
-                <MarkdownPreview content={ticket.reply} />
-              </div>
-            )}
           </>
         )}
       </div>
 
-      {isAdmin && (
+      {(ticket.replies?.length > 0) && (
+        <div className="card mt-2">
+          <div className="card-header"><h2>回复 ({ticket.replies.length})</h2></div>
+          {ticket.replies.map(r => (
+            <div key={r.id} className="mb-2" style={{ borderLeft: '2px solid #334155', paddingLeft: '0.75rem' }}>
+              <div className="flex-between mb-1">
+                <span className="text-sm" style={{ color: '#38bdf8', fontWeight: 600 }}>{r.username}</span>
+                <span className="text-sm text-muted">{formatTime(r.created_at)}</span>
+              </div>
+              <MarkdownPreview content={r.content} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(isAdmin || (user && user.id === ticket.user_id)) && ticket.status !== 'closed' && (
         <div className="card mt-2">
           <div className="form-group">
-            <label>回复 / 处理备注</label>
+            <label>回复</label>
             <MarkdownEditor value={reply} onChange={setReply} minHeight={100} />
           </div>
-          <div className="flex gap-2">
-            {['pending', 'processing', 'resolved', 'closed'].map(s => (
+          <div className="flex gap-1">
+            <button className="btn btn-sm" onClick={handleReply}>发送回复</button>
+            {isAdmin && ['pending', 'processing', 'resolved', 'closed'].map(s => (
               <button key={s} className="btn btn-sm btn-secondary" onClick={async () => {
-                await api.patch(`/tickets/${id}`, { status: s, reply })
-                setReply('')
+                if (reply.trim()) {
+                  await api.post(`/tickets/${id}/replies`, { content: reply })
+                  setReply('')
+                }
+                await api.patch(`/tickets/${id}`, { status: s })
                 load()
               }}>{s}</button>
             ))}

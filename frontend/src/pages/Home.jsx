@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../AuthContext'
-import { formatTime } from '../utils'
+import { formatTime, getAvatarUrl } from '../utils'
 
 export default function Home() {
   const [data, setData] = useState(null)
@@ -24,56 +24,58 @@ export default function Home() {
         {isAdmin && <Link to="/announcements" className="btn btn-sm btn-secondary">管理公告</Link>}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
-        <div className="card">
+      {data.announcements?.length > 0 && (
+        <div className="card mb-2">
           <div className="card-header"><h2>公告</h2></div>
-          {data.announcements?.length ? data.announcements.map(a => (
-            <div key={a.id} style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #1e293b' }}>
-              <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{a.title}</div>
+          {data.announcements.map(a => (
+            <Link key={a.id} to={`/announcements/${a.id}`} className="flex-between" style={{
+              padding: '0.75rem 0', borderBottom: '1px solid #1e293b', textDecoration: 'none',
+              transition: 'background 0.15s', display: 'block'
+            }}>
+              <div style={{ fontWeight: 600, color: '#e2e8f0' }}>{a.title}</div>
               <div className="text-sm text-muted">{formatTime(a.created_at)}</div>
-              <div className="markdown-preview text-sm mt-1" style={{ color: '#cbd5e1' }}>{a.content}</div>
-            </div>
-          )) : <p className="text-sm text-muted">暂无公告</p>}
+            </Link>
+          ))}
         </div>
+      )}
 
-        <div className="card">
-          <div className="card-header"><h2>即将开始的比赛</h2></div>
-          {data.upcomingContest ? (
-            <div>
-              <Link to={`/contests/${data.upcomingContest.id}`}>{data.upcomingContest.title}</Link>
-              <div className="text-sm text-muted">{formatTime(data.upcomingContest.start_time)}</div>
-            </div>
-          ) : <p className="text-sm text-muted">暂无即将开始的比赛</p>}
-        </div>
+      <div className="card mb-2">
+        <div className="card-header"><h2>即将开始的比赛</h2></div>
+        {data.upcomingContest ? (
+          <div>
+            <Link to={`/contests/${data.upcomingContest.id}`}>{data.upcomingContest.title}</Link>
+            <div className="text-sm text-muted">{formatTime(data.upcomingContest.start_time)}</div>
+          </div>
+        ) : <p className="text-sm text-muted">暂无即将开始的比赛</p>}
+      </div>
 
-        <div className="card">
-          <div className="card-header"><h2>热门讨论</h2></div>
-          {data.hotTopics?.length ? data.hotTopics.map(t => (
-            <div key={t.id} style={{ marginBottom: '0.5rem' }}>
-              <Link to={`/topics/${t.id}`}>{t.title}</Link>
-              <div className="text-sm text-muted"><Link to={`/users/${t.user_id}`} className="text-muted">{t.author}</Link> · {t.views} 次浏览</div>
-            </div>
-          )) : <p className="text-sm text-muted">暂无热门话题</p>}
-        </div>
+      <div className="card mb-2">
+        <div className="card-header"><h2>热门讨论</h2></div>
+        {data.hotTopics?.length ? data.hotTopics.map(t => (
+          <div key={t.id} style={{ marginBottom: '0.5rem' }}>
+            <Link to={`/topics/${t.id}`}>{t.title}</Link>
+            <div className="text-sm text-muted"><Link to={`/users/${t.user_id}`} className="text-muted">{t.author}</Link> · {t.views} 次浏览</div>
+          </div>
+        )) : <p className="text-sm text-muted">暂无热门话题</p>}
+      </div>
 
-        <div className="card">
-          <div className="card-header"><h2>最新文章</h2></div>
-          {data.recentArticles?.length ? data.recentArticles.map(a => (
-            <div key={a.id} style={{ marginBottom: '0.5rem' }}>
-              <Link to={`/articles/${a.id}`}>{a.title}</Link>
-              <div className="text-sm text-muted"><Link to={`/users/${a.user_id}`} className="text-muted">{a.author}</Link></div>
-            </div>
-          )) : <p className="text-sm text-muted">暂无文章</p>}
-        </div>
+      <div className="card mb-2">
+        <div className="card-header"><h2>最新文章</h2></div>
+        {data.recentArticles?.length ? data.recentArticles.map(a => (
+          <div key={a.id} style={{ marginBottom: '0.5rem' }}>
+            <Link to={`/articles/${a.id}`}>{a.title}</Link>
+            <div className="text-sm text-muted"><Link to={`/users/${a.user_id}`} className="text-muted">{a.author}</Link></div>
+          </div>
+        )) : <p className="text-sm text-muted">暂无文章</p>}
+      </div>
 
-        <div className="card">
-          <div className="card-header"><h2>最新题目</h2></div>
-          {data.recentProblems?.length ? data.recentProblems.map(p => (
-            <div key={p.id} style={{ marginBottom: '0.5rem' }}>
-              <Link to={`/problems/${p.id}`}>{p.title}</Link>
-            </div>
-          )) : <p className="text-sm text-muted">暂无题目</p>}
-        </div>
+      <div className="card mb-2">
+        <div className="card-header"><h2>最新题目</h2></div>
+        {data.recentProblems?.length ? data.recentProblems.map(p => (
+          <div key={p.id} style={{ marginBottom: '0.5rem' }}>
+            <Link to={`/problems/${p.id}`}>{p.title}</Link>
+          </div>
+        )) : <p className="text-sm text-muted">暂无题目</p>}
       </div>
 
       {data.feed?.length > 0 && (
@@ -82,8 +84,7 @@ export default function Home() {
           {data.feed.map(a => (
             <div key={a.id} className="flex-between mb-1 text-sm">
               <div className="flex gap-1" style={{ alignItems: 'center' }}>
-                {a.avatar ? <img src={a.avatar} alt="" style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }} />
-                  : <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#334155', fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>{a.username[0]}</div>}
+                <img src={getAvatarUrl(a.username, a.avatar)} alt="" style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }} />
                 <Link to={`/users/${a.user_id}`} style={{ color: '#38bdf8', fontWeight: 600 }}>{a.username}</Link>
                 {' '}{a.content}
               </div>

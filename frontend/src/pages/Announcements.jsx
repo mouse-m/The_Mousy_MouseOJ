@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
 import { api } from '../api'
 import MarkdownEditor from '../components/MarkdownEditor'
@@ -83,18 +84,19 @@ export default function Announcements() {
       {list.map(a => (
         <div key={a.id} className="card">
           <div className="flex-between mb-1">
-            <div>
-              <span style={{ fontWeight: 600 }}>{a.title}</span>
+            <Link to={`/announcements/${a.id}`} className="flex-between" style={{
+              flex: 1, textDecoration: 'none', alignItems: 'center'
+            }}>
+              <span style={{ fontWeight: 600, color: '#e2e8f0' }}>{a.title}</span>
               <span className="text-sm text-muted" style={{ marginLeft: '0.5rem' }}>{formatTime(a.created_at)}</span>
-            </div>
+            </Link>
             {isAdmin && (
-              <div className="flex gap-1">
+              <div className="flex gap-1" style={{ marginLeft: '0.5rem', flexShrink: 0 }}>
                 <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(a)}>编辑</button>
                 <button className="btn btn-sm btn-secondary" onClick={() => handleDelete(a.id)} style={{ color: '#f87171' }}>删除</button>
               </div>
             )}
           </div>
-          <div className="text-sm" style={{ color: '#94a3b8' }}>{a.content}</div>
         </div>
       ))}
       {list.length === 0 && <p className="text-sm text-muted text-center" style={{ padding: '2rem' }}>暂无公告</p>}
