@@ -590,6 +590,31 @@ app.patch('/api/topics/:id/pin', requireAdmin(), async (c) => {
   return c.json({ success: true });
 });
 
+// 编辑帖子内容 (作者或管理员)
+app.patch('/api/topics/:id', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  const { content } = await c.req.json();
+  if (!content) return err(c, '内容不能为空');
+  const topic = await c.env.DB.prepare('SELECT user_id FROM topics WHERE id = ?').bind(id).first();
+  if (!topic) return err(c, '帖子不存在', 404);
+  if (topic.user_id !== user.id && user.role !== 'admin') return err(c, '无权编辑', 403);
+  await c.env.DB.prepare('UPDATE topics SET content = ? WHERE id = ?').bind(content, id).run();
+  return c.json({ success: true });
+});
+
+// 删除帖子 (作者或管理员)
+app.delete('/api/topics/:id', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  const topic = await c.env.DB.prepare('SELECT user_id FROM topics WHERE id = ?').bind(id).first();
+  if (!topic) return err(c, '帖子不存在', 404);
+  if (topic.user_id !== user.id && user.role !== 'admin') return err(c, '无权删除', 403);
+  await c.env.DB.prepare('DELETE FROM replies WHERE topic_id = ?').bind(id).run();
+  await c.env.DB.prepare('DELETE FROM topics WHERE id = ?').bind(id).run();
+  return c.json({ success: true });
+});
+
 // ============================================================
 //  5. 文章社区模块
 // ============================================================
@@ -755,19 +780,52 @@ app.get('/api/tickets/:id', requireAuth(), async (c) => {
   return c.json(ticket);
 });
 
-app.patch('/api/tickets/:id', requireAdmin(), async (c) => {
+app.patch('/api/tickets/:id', requireAuth(), async (c) => {
+  const user = c.get('user');
   const id = c.req.param('id');
-  const { status, reply } = await c.req.json();
-  const validStatus = ['open', 'pending', 'processing', 'resolved', 'closed'];
-  if (status && !validStatus.includes(status)) return err(c, '无效状态');
-  await c.env.DB.prepare(
-    'UPDATE tickets SET status = ?, reply = ? WHERE id = ?'
-  ).bind(status || 'open', reply || '', id).run();
-  const ticket = await c.env.DB.prepare('SELECT user_id, title FROM tickets WHERE id = ?').bind(id).first();
-  if (ticket) {
-    await createNotification(c.env.DB, ticket.user_id, 'ticket',
-      `工单已更新`, `你的工单「${ticket.title}」状态已更新`, parseInt(id, 10));
+  const body = await c.req.json();
+  const ticket = await c.env.DB.prepare('SELECT * FROM tickets WHERE id = ?').bind(id).first();
+  if (!ticket) return err(c, '工单不存在', 404);
+  const isAdmin = user.role === 'admin' || user.id === 1;
+  const isOwner = ticket.user_id === user.id;
+  if (!isAdmin && !isOwner) return err(c, '无权操作', 403);
+
+  if (isOwner && (body.title !== undefined || body.content !== undefined)) {
+    await c.env.DB.prepare(
+      'UPDATE tickets SET title = COALESCE(?, title), content = COALESCE(?, content) WHERE id = ?'
+    ).bind(body.title ?? null, body.content ?? null, id).run();
   }
+
+  if (isAdmin) {
+    const sets = [], binds = [];
+    if (body.status) {
+      const validStatus = ['open', 'pending', 'processing', 'resolved', 'closed'];
+      if (!validStatus.includes(body.status)) return err(c, '无效状态');
+      sets.push('status = ?'); binds.push(body.status);
+    }
+    if (body.reply !== undefined) {
+      sets.push('reply = ?'); binds.push(body.reply);
+    }
+    if (sets.length) {
+      binds.push(id);
+      await c.env.DB.prepare(`UPDATE tickets SET ${sets.join(', ')} WHERE id = ?`).bind(...binds).run();
+      if (body.reply !== undefined) {
+        await createNotification(c.env.DB, ticket.user_id, 'ticket',
+          `工单已回复`, `你的工单「${ticket.title}」有新的回复`, parseInt(id, 10));
+      }
+    }
+  }
+  return c.json({ success: true });
+});
+
+// 删除工单 (作者或管理员)
+app.delete('/api/tickets/:id', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  const ticket = await c.env.DB.prepare('SELECT * FROM tickets WHERE id = ?').bind(id).first();
+  if (!ticket) return err(c, '工单不存在', 404);
+  if (ticket.user_id !== user.id && user.role !== 'admin') return err(c, '无权删除', 403);
+  await c.env.DB.prepare('DELETE FROM tickets WHERE id = ?').bind(id).run();
   return c.json({ success: true });
 });
 

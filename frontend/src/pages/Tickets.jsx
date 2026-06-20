@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../AuthContext'
 import MarkdownEditor from '../components/MarkdownEditor'
+import { formatTime } from '../utils'
 
 export default function Tickets() {
   const { user } = useAuth()
@@ -121,7 +122,7 @@ export default function Tickets() {
                   <td><Link to={`/tickets/${t.id}`}>{t.title}</Link></td>
                   <td><span className={`badge ${badgeClass}`}>{t.status}</span></td>
                   {isAdmin && <td className="text-sm text-muted">{t.username}</td>}
-                  <td className="text-sm text-muted">{new Date(t.created_at).toLocaleString('zh-CN')}</td>
+                  <td className="text-sm text-muted">{formatTime(t.created_at)}</td>
                   {isAdmin && (
                     <td>
                       <select className="text-sm" style={{ width: 'auto', padding: '0.2rem' }} value={t.status}

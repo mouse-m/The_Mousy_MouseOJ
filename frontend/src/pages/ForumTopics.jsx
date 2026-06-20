@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../AuthContext'
+import { formatTime } from '../utils'
 
 export default function ForumTopics() {
   const { slug } = useParams()
@@ -35,7 +36,7 @@ export default function ForumTopics() {
                 <td className="text-sm text-muted">{t.author}{t.tags && t.tags.split(',').filter(Boolean).map(tag => <span key={tag} className="user-tag">{tag}</span>)}</td>
                 <td className="text-sm text-muted">{t.reply_count}</td>
                 <td className="text-sm text-muted">{t.views}</td>
-                <td className="text-sm text-muted">{new Date(t.created_at).toLocaleString('zh-CN')}</td>
+                <td className="text-sm text-muted">{formatTime(t.created_at)}</td>
               </tr>
             ))}
             {topics.length === 0 && <tr><td colSpan={5} className="text-center text-muted" style={{ padding: '2rem' }}>暂无帖子</td></tr>}

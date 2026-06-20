@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '../api'
+import { formatTime } from '../utils'
 
 const FINAL_STATUSES = new Set([
   'Accepted', 'Wrong Answer', 'Time Limit Exceed', 'Memory Limit Exceed',
@@ -48,7 +49,7 @@ export default function SubmissionDetail() {
           <div><span className="text-sm text-muted">语言: </span>{sub.language}</div>
           <div><span className="text-sm text-muted">耗时: </span>{sub.runtime}ms</div>
           <div><span className="text-sm text-muted">内存: </span>{sub.memory}KB</div>
-          <div><span className="text-sm text-muted">时间: </span>{new Date(sub.created_at).toLocaleString('zh-CN')}</div>
+          <div><span className="text-sm text-muted">时间: </span>{formatTime(sub.created_at)}</div>
         </div>
         {!FINAL_STATUSES.has(sub.status) && sub.status !== 'Manual' && sub.status !== 'Submit Error' && (
           <div className="text-sm text-muted mt-2" style={{ color: '#fbbf24' }}>评测中，自动刷新...</div>

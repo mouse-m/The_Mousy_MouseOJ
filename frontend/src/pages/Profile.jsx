@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../AuthContext'
+import { formatTime } from '../utils'
 
 export default function Profile() {
   const { id } = useParams()
@@ -33,7 +34,7 @@ export default function Profile() {
             </h1>
             <div className="text-sm text-muted">
               {profile.role === 'admin' ? <span className="badge badge-ok">管理员</span> : null}
-              {' '}加入于 {new Date(profile.created_at).toLocaleString('zh-CN')}
+              {' '}加入于 {formatTime(profile.created_at)}
             </div>
             {profile.bio && <p className="text-sm mt-2" style={{ color: '#94a3b8' }}>{profile.bio}</p>}
           </div>

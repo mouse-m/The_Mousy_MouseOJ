@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
+import { formatTime } from '../utils'
 
 export default function Contests() {
   const [contests, setContests] = useState([])
@@ -47,8 +48,8 @@ export default function Contests() {
               return (
                 <tr key={c.id}>
                   <td><Link to={`/contests/${c.id}`}>{c.title}</Link></td>
-                  <td className="text-sm text-muted">{start.toLocaleString('zh-CN')}</td>
-                  <td className="text-sm text-muted">{end.toLocaleString('zh-CN')}</td>
+                  <td className="text-sm text-muted">{formatTime(start.toISOString())}</td>
+                  <td className="text-sm text-muted">{formatTime(end.toISOString())}</td>
                   <td><span className={`badge ${statusClass}`}>{statusText}</span></td>
                 </tr>
               )

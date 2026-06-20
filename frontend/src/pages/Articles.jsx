@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../AuthContext'
+import { formatTime } from '../utils'
 
 export default function Articles() {
   const [articles, setArticles] = useState([])
@@ -31,7 +32,7 @@ export default function Articles() {
                 <td><Link to={`/articles/${a.id}`}>{a.title}</Link></td>
                 <td className="text-sm text-muted">{a.author}</td>
                 <td className="text-sm text-muted">{a.likes}</td>
-                <td className="text-sm text-muted">{new Date(a.created_at).toLocaleString('zh-CN')}</td>
+                <td className="text-sm text-muted">{formatTime(a.created_at)}</td>
               </tr>
             ))}
             {articles.length === 0 && <tr><td colSpan={4} className="text-center text-muted" style={{ padding: '2rem' }}>暂无文章</td></tr>}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
+import { formatTime } from '../utils'
 
 const statusBadge = (s) => {
   const key = s.toLowerCase().replace(/\s+/g, '-')
@@ -52,7 +53,7 @@ export default function Submissions() {
                 <td><Link to={`/submissions/${s.id}`} style={{ color: 'inherit' }}>{statusBadge(s.status)}</Link></td>
                 <td className="text-sm text-muted">{s.runtime}ms</td>
                 <td className="text-sm text-muted">{s.memory}KB</td>
-                <td className="text-sm text-muted">{new Date(s.created_at).toLocaleString('zh-CN')}</td>
+                <td className="text-sm text-muted">{formatTime(s.created_at)}</td>
               </tr>
             ))}
             {subs.length === 0 && <tr><td colSpan={8} className="text-center text-muted" style={{ padding: '2rem' }}>暂无提交记录</td></tr>}

@@ -25,6 +25,7 @@ export default function Layout({ children }) {
             <Link to="/submissions">提交</Link>
             <Link to="/tickets">工单</Link>
           </div>
+          <div className="nav-sep"></div>
           <div className="nav-right">
             {user ? (
               <div className="nav-user">

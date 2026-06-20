@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../AuthContext'
 import MarkdownPreview from '../components/MarkdownPreview'
+import { formatTime } from '../utils'
 
 export default function ArticleDetail() {
   const { id } = useParams()
@@ -30,7 +31,7 @@ export default function ArticleDetail() {
       <Link to="/articles" className="text-sm text-muted">← 返回文章列表</Link>
       <h1 className="page-title mt-2">{article.title}</h1>
       <div className="text-sm text-muted mb-2">
-        {article.author} · {new Date(article.created_at).toLocaleString('zh-CN')}
+        {article.author} · {formatTime(article.created_at)}
       </div>
 
       <div className="card">

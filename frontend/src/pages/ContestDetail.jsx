@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '../api'
 import MarkdownPreview from '../components/MarkdownPreview'
+import { formatTime } from '../utils'
 
 export default function ContestDetail() {
   const { id } = useParams()
@@ -18,7 +19,7 @@ export default function ContestDetail() {
       <Link to="/contests" className="text-sm text-muted">← 返回比赛列表</Link>
       <h1 className="page-title mt-2">{contest.title}</h1>
       <div className="text-sm text-muted mb-2">
-        {new Date(contest.start_time).toLocaleString('zh-CN')} ~ {new Date(contest.end_time).toLocaleString('zh-CN')}
+        {formatTime(contest.start_time)} ~ {formatTime(contest.end_time)}
       </div>
 
       <div className="card mb-2">
