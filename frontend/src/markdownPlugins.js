@@ -87,15 +87,16 @@ export function remarkDirectiveHandler() {
           node.children = [...(node.children || []), cite]
         }
       } else if (['info', 'success', 'warning', 'error'].includes(node.name)) {
-        data.hName = 'div'
+        data.hName = 'details'
         data.hProperties = { className: `callout callout-${node.name}` }
+        if ('open' in attrs) data.hProperties.open = true
         if (node.label) {
-          const header = {
+          const summary = {
             type: 'paragraph',
-            data: { hName: 'div', hProperties: { className: 'callout-header' } },
+            data: { hName: 'summary', hProperties: { className: 'callout-summary' } },
             children: [{ type: 'text', value: node.label }]
           }
-          node.children = [header, ...(node.children || [])]
+          node.children = [summary, ...(node.children || [])]
         }
       } else if (node.name === 'cute-table') {
         data.hName = 'div'

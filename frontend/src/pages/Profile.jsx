@@ -1,13 +1,15 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../AuthContext'
-import { formatTime, getAvatarUrl, usernameColor } from '../utils'
+import { formatTime, getAvatarUrl, usernameColor, renderContent } from '../utils'
 
 export default function Profile() {
   const { id } = useParams()
   const { user: me } = useAuth()
   const [profile, setProfile] = useState(null)
+  const [activities, setActivities] = useState([])
+  const [actLoading, setActLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef()
   const isMe = me && me.id === parseInt(id)
@@ -29,9 +31,18 @@ export default function Profile() {
     }
   }
 
-  const load = () => api.get(`/users/${id}`).then(setProfile).catch(() => {})
+  const loadProfile = useCallback(() => api.get(`/users/${id}`).then(setProfile).catch(() => {}), [id])
 
-  useEffect(() => { load() }, [id])
+  const loadActivities = useCallback(() => {
+    setActLoading(true)
+    api.get(`/activities?user_id=${id}`).then(setActivities).catch(() => {}).finally(() => setActLoading(false))
+  }, [id])
+
+  useEffect(() => { loadProfile() }, [loadProfile])
+
+  useEffect(() => {
+    if (tab === 'activities') loadActivities()
+  }, [tab, loadActivities])
 
   const handleFollow = async () => {
     try {
@@ -64,6 +75,8 @@ export default function Profile() {
   }
 
   if (!profile) return <div className="container"><div className="loading">加载中...</div></div>
+
+  const showMutual = me && profile.is_following
 
   return (
     <div className="container" style={{ maxWidth: 800 }}>
@@ -99,11 +112,15 @@ export default function Profile() {
               <span>加入于 {formatTime(profile.created_at)}</span>
             </div>
           </div>
-          <div style={{ flexShrink: 0 }}>
+          <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'center' }}>
             {!isMe && me && (
-              <button className={`btn btn-sm ${profile.is_following ? 'btn-secondary' : ''}`} onClick={handleFollow} style={{ whiteSpace: 'nowrap' }}>
-                {profile.is_following ? '已关注' : '关注'}
-              </button>
+              <>
+                <button className={`btn btn-sm ${profile.is_following ? 'btn-secondary' : ''}`}
+                  onClick={handleFollow} style={{ whiteSpace: 'nowrap' }}>
+                  {profile.is_following ? '已关注' : '关注'}
+                </button>
+                {showMutual && <span className="badge badge-ok" style={{ fontSize: '0.65rem' }}>互相关注</span>}
+              </>
             )}
           </div>
         </div>
@@ -161,9 +178,38 @@ export default function Profile() {
 
       {/* ====== 动态 ====== */}
       {tab === 'activities' && (
-        <div className="card" style={{ padding: '1rem' }}>
-          <Link to={`/users/${id}/activities`} className="btn btn-sm btn-secondary">查看全部动态</Link>
-        </div>
+        actLoading ? <div className="loading">加载中...</div> : (
+          activities.length > 0 ? (
+            <div className="card" style={{ padding: 0 }}>
+              {activities.map((a, i) => (
+                <div key={a.id} style={{
+                  padding: '0.75rem 1rem',
+                  borderBottom: i < activities.length - 1 ? '1px solid #1e293b' : 'none'
+                }}>
+                  <div className="flex-between mb-1">
+                    <span style={{ fontSize: '0.85rem', color: '#64748b' }}>{formatTime(a.created_at)}</span>
+                  </div>
+                  <div style={{ fontSize: '0.9rem', color: '#e2e8f0' }}>
+                    <span style={{ color: usernameColor(a.role), fontWeight: 600 }}>{a.username}</span>
+                    <span style={{ marginLeft: '0.35rem', color: '#94a3b8' }}>{a.content}</span>
+                  </div>
+                  {a.type === 'submit' && a.ref_id && (
+                    <Link to={`/submissions/${a.ref_id}`} className="btn btn-sm btn-secondary" style={{ marginTop: '0.35rem' }}>查看提交</Link>
+                  )}
+                  {a.type === 'article' && a.ref_id && (
+                    <Link to={`/articles/${a.ref_id}`} className="btn btn-sm btn-secondary" style={{ marginTop: '0.35rem' }}>查看文章</Link>
+                  )}
+                  {a.type === 'topic' && a.ref_id && (
+                    <Link to={`/topics/${a.ref_id}`} className="btn btn-sm btn-secondary" style={{ marginTop: '0.35rem' }}>查看帖子</Link>
+                  )}
+                  {a.type === 'register' && (
+                    <span className="badge badge-ok" style={{ fontSize: '0.7rem', marginTop: '0.35rem', display: 'inline-block' }}>新用户</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : <p className="text-sm text-muted text-center" style={{ padding: '2rem' }}>暂无动态</p>
+        )
       )}
 
       {/* ====== 设置 ====== */}

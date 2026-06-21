@@ -193,20 +193,25 @@ pre code {
   overflow: hidden;
   border: 1px solid #334155;
 }
-.callout-header {
+.callout-summary {
   padding: 0.5rem 1rem;
   font-weight: 600;
   font-size: 0.9rem;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
 }
+.callout-summary::-webkit-details-marker { display: none; }
 .callout-info { border-color: #1e3a5f; }
-.callout-info .callout-header { background: #1e3a5f; color: #93c5fd; }
+.callout-info .callout-summary { background: #1e3a5f; color: #93c5fd; }
 .callout-success { border-color: #166534; }
-.callout-success .callout-header { background: #166534; color: #86efac; }
+.callout-success .callout-summary { background: #166534; color: #86efac; }
 .callout-warning { border-color: #713f12; }
-.callout-warning .callout-header { background: #713f12; color: #fde68a; }
+.callout-warning .callout-summary { background: #713f12; color: #fde68a; }
 .callout-error { border-color: #7f1d1d; }
-.callout-error .callout-header { background: #7f1d1d; color: #fca5a5; }
-.callout > :not(.callout-header) { padding: 0.75rem 1rem; }
+.callout-error .callout-summary { background: #7f1d1d; color: #fca5a5; }
+.callout[open] .callout-summary { border-bottom: 1px solid #334155; }
+.callout > :not(.callout-summary) { padding: 0.75rem 1rem; }
 .callout p { margin: 0.25rem 0; }
 
 .cute-table {

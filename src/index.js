@@ -1497,6 +1497,15 @@ app.post('/api/activities', requireAuth(), async (c) => {
 // 全局动态
 app.get('/api/activities', async (c) => {
   const { limit, offset } = getPagination(c);
+  const userId = c.req.query('user_id');
+  if (userId) {
+    const { results } = await c.env.DB.prepare(
+      `SELECT a.*, u.username, u.avatar, u.role FROM activities a
+       JOIN users u ON u.id = a.user_id
+       WHERE a.user_id = ? ORDER BY a.id DESC LIMIT ? OFFSET ?`
+    ).bind(userId, limit, offset).all();
+    return c.json(results);
+  }
   const { results } = await c.env.DB.prepare(
     `SELECT a.*, u.username, u.avatar, u.role FROM activities a
      JOIN users u ON u.id = a.user_id

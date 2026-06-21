@@ -31,7 +31,7 @@ function CodeBlock({ node, children, className }) {
   const linesMatch = meta.match(/lines=(\d+)-(\d+)/)
   const highlightStart = linesMatch ? parseInt(linesMatch[1]) : null
   const highlightEnd = linesMatch ? parseInt(linesMatch[2]) : null
-  const code = String(children).replace(/\n$/, '')
+  const code = String(children ?? '').replace(/\n$/, '')
 
   if (language === 'mermaid') return <MermaidBlock code={code} />
 
