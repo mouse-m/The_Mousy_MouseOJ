@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../AuthContext'
-import { formatTime } from '../utils'
+import { formatTime, usernameColor } from '../utils'
+import MarkdownPreview from '../components/MarkdownPreview'
 
 export default function ForumTopics() {
   const { slug } = useParams()
@@ -21,27 +22,52 @@ export default function ForumTopics() {
       <h1 className="page-title mt-2">讨论区 <span>/{slug}</span></h1>
 
       <div className="card" style={{ padding: 0 }}>
-        <table>
-          <thead>
-            <tr><th>标题</th><th>作者</th><th>回复</th><th>浏览</th><th>时间</th></tr>
-          </thead>
-          <tbody>
-            {topics.map(t => (
-              <tr key={t.id}>
-                <td>
-                  <Link to={`/topics/${t.id}`} style={{ fontWeight: t.pinned ? 700 : 400 }}>
-                    {t.pinned ? '[置顶] ' : ''}{t.title}
-                  </Link>
-                </td>
-                <td className="text-sm text-muted"><Link to={`/users/${t.user_id}`} className="text-muted">{t.author}</Link>{t.tags && t.tags.split(',').filter(Boolean).map(tag => <span key={tag} className="user-tag">{tag}</span>)}</td>
-                <td className="text-sm text-muted">{t.reply_count}</td>
-                <td className="text-sm text-muted">{t.views}</td>
-                <td className="text-sm text-muted">{formatTime(t.created_at)}</td>
-              </tr>
-            ))}
-            {topics.length === 0 && <tr><td colSpan={5} className="text-center text-muted" style={{ padding: '2rem' }}>暂无帖子</td></tr>}
-          </tbody>
-        </table>
+        {topics.map(t => (
+          <div key={t.id} style={{
+            borderBottom: '1px solid #1e293b', padding: '0.75rem 1rem',
+            transition: 'background 0.15s'
+          }}
+            onMouseEnter={e => e.currentTarget.style.background = '#1e293b'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            <div className="flex-between" style={{ alignItems: 'flex-start' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Link to={`/topics/${t.id}`} style={{
+                  fontWeight: t.pinned ? 700 : 500, color: '#e2e8f0',
+                  fontSize: '0.95rem', textDecoration: 'none'
+                }}>
+                  {t.pinned ? <span style={{ color: '#f59e0b' }}>[置顶] </span> : ''}{t.title}
+                </Link>
+                <div className="text-sm" style={{ marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span className={`${t.online ? 'online-dot' : 'offline-dot'}`}></span>
+                  <span style={{ color: usernameColor(t.tags?.includes('admin') ? 'admin' : 'user') }}>
+                    {t.author}
+                  </span>
+                  {t.tags && t.tags.split(',').filter(Boolean).map(tag => <span key={tag} className="user-tag">{tag}</span>)}
+                  <span style={{ color: '#64748b' }}>·</span>
+                  <span style={{ color: '#64748b' }}>{t.reply_count} 回复</span>
+                  <span style={{ color: '#64748b' }}>·</span>
+                  <span style={{ color: '#64748b' }}>{t.views} 浏览</span>
+                  <span style={{ color: '#64748b' }}>·</span>
+                  <span style={{ color: '#64748b' }}>{formatTime(t.created_at)}</span>
+                </div>
+              </div>
+            </div>
+            {t.preview_replies?.length > 0 && (
+              <div style={{ marginTop: '0.5rem', borderLeft: '2px solid #334155', paddingLeft: '0.75rem' }}>
+                {t.preview_replies.map((r, i) => (
+                  <div key={i} style={{
+                    fontSize: '0.85rem', color: '#94a3b8', marginBottom: i < t.preview_replies.length - 1 ? '0.35rem' : 0,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%'
+                  }}>
+                    <span style={{ color: '#64748b', fontWeight: 600 }}>{r.author}</span>: {r.content.replace(/<[^>]*>/g, '').substring(0, 200)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+        {topics.length === 0 && <div className="text-center text-muted" style={{ padding: '2rem' }}>暂无帖子</div>}
       </div>
 
       <div className="flex-between mt-2">

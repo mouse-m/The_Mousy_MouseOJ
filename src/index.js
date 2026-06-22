@@ -529,7 +529,8 @@ app.get('/api/forums/:slug/topics', async (c) => {
   const { limit, offset } = getPagination(c);
   const { results } = await c.env.DB.prepare(
     `SELECT t.id, t.title, u.username as author, u.id as user_id, u.tags, t.views, t.pinned, t.created_at,
-            (SELECT COUNT(*) FROM replies r WHERE r.topic_id = t.id) as reply_count
+            (SELECT COUNT(*) FROM replies r WHERE r.topic_id = t.id) as reply_count,
+            u.last_seen
      FROM topics t
      JOIN forums f ON t.forum_id = f.id
      JOIN users u ON t.user_id = u.id
@@ -537,6 +538,14 @@ app.get('/api/forums/:slug/topics', async (c) => {
      ORDER BY t.pinned DESC, t.created_at DESC
      LIMIT ? OFFSET ?`
   ).bind(slug, limit, offset).all();
+  for (const t of results) {
+    t.online = t.last_seen && (Date.now() - new Date(t.last_seen + 'Z').getTime()) < 300000;
+    delete t.last_seen;
+    const { results: replies } = await c.env.DB.prepare(
+      'SELECT r.content, r.created_at, u.username as author FROM replies r JOIN users u ON r.user_id = u.id WHERE r.topic_id = ? ORDER BY r.created_at ASC LIMIT 3'
+    ).bind(t.id).all();
+    t.preview_replies = replies;
+  }
   return c.json(results);
 });
 
@@ -605,6 +614,23 @@ app.post('/api/topics/:id/replies', requireAuth(), async (c) => {
   if (topic.user_id !== user.id) {
     await createNotification(c.env.DB, topic.user_id, 'reply',
       `你的帖子收到了新回复`, `${user.username} 回复了「${topic.title}」`, topicId);
+  }
+
+  // 解析 @提及 并通知被提及用户
+  const mentionMatches = content.match(/@(\S+)/g);
+  if (mentionMatches) {
+    const mentionedUsers = new Set();
+    for (const m of mentionMatches) {
+      const username = m.slice(1);
+      if (!mentionedUsers.has(username)) {
+        mentionedUsers.add(username);
+        const mentioned = await c.env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(username).first();
+        if (mentioned && mentioned.id !== user.id && mentioned.id !== topic.user_id) {
+          await createNotification(c.env.DB, mentioned.id, 'mention',
+            `有人在帖子中提到了你`, `${user.username} 在「${topic.title}」中提到了 @${username}`, topicId);
+        }
+      }
+    }
   }
 
   return c.json({ id: result.id });
@@ -846,6 +872,11 @@ app.patch('/api/tickets/:id', requireAuth(), async (c) => {
       if (body.reply !== undefined) {
         await createNotification(c.env.DB, ticket.user_id, 'ticket',
           `工单已回复`, `你的工单「${ticket.title}」有新的回复`, parseInt(id, 10));
+      }
+      if (body.status && body.status !== ticket.status) {
+        const statusLabels = { open: '开启', pending: '待处理', processing: '处理中', resolved: '已解决', closed: '已关闭' };
+        await createNotification(c.env.DB, ticket.user_id, 'ticket',
+          `工单状态已变更`, `你的工单「${ticket.title}」状态已变为 ${statusLabels[body.status] || body.status}`, parseInt(id, 10));
       }
     }
   }

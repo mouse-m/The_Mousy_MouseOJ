@@ -23,6 +23,7 @@ import TicketDetail from './pages/TicketDetail'
 import Announcements from './pages/Announcements'
 import AnnouncementDetail from './pages/AnnouncementDetail'
 import Feed from './pages/Feed'
+import Notifications from './pages/Notifications'
 import NotFound from './pages/NotFound'
 
 export default function App() {
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/tickets" element={<Tickets />} />
         <Route path="/tickets/:id" element={<TicketDetail />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
