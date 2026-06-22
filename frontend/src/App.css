@@ -218,14 +218,27 @@ pre code {
   margin: 0.75rem 0;
 }
 .cute-table table {
-  border: 2px solid #38bdf8;
-  border-radius: 8px;
-  overflow: hidden;
+  border-top: 3px solid #38bdf8;
+  border-bottom: 3px solid #38bdf8;
+  border-left: none;
+  border-right: none;
+  border-collapse: collapse;
+}
+.cute-table th, .cute-table td {
+  border: none;
+  border-right: 1px solid #334155;
+}
+.cute-table th:last-child, .cute-table td:last-child {
+  border-right: none;
 }
 .cute-table th {
   background: #1e3a5f;
   color: #93c5fd;
   border-bottom: 2px solid #38bdf8;
+  border-right: 1px solid #334155;
+}
+.cute-table th:last-child {
+  border-right: none;
 }
 
 .epigraph {
