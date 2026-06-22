@@ -40,7 +40,7 @@ export default function ForumTopics() {
                 </Link>
                 <div className="text-sm" style={{ marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {t.online && <span className="online-dot"></span>}
-                  <span style={{ color: usernameColor(t.tags?.includes('admin') ? 'admin' : 'user', t.rating) }}>
+                  <span style={{ color: usernameColor(t.role, t.rating) }}>
                     {t.author}
                   </span>
                   {t.tags && t.tags.split(',').filter(Boolean).map(tag => <span key={tag} className="user-tag">{tag}</span>)}

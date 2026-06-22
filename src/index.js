@@ -153,7 +153,7 @@ app.post('/api/auth/register', async (c) => {
 
   const hash = await sha256(password + c.env.JWT_SECRET);
   const result = await c.env.DB.prepare(
-    'INSERT INTO users (username, password) VALUES (?, ?) RETURNING id, username, role'
+    "INSERT INTO users (username, password, created_at) VALUES (?, ?, datetime('now', '+8 hours')) RETURNING id, username, role"
   ).bind(username, hash).first();
 
   await c.env.DB.prepare(
@@ -272,7 +272,7 @@ app.post('/api/auth/register-email', async (c) => {
   const hash = await sha256(password + c.env.JWT_SECRET);
 
   await c.env.DB.prepare(
-    'INSERT INTO users (username, password, email, status, verify_code, verify_expires) VALUES (?, ?, ?, ?, ?, ?)'
+    "INSERT INTO users (username, password, email, status, verify_code, verify_expires, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now', '+8 hours'))"
   ).bind(username, hash, email, 'unverified', code, expires).run();
 
   await sendEmail(c.env, email, 'MouseOJ 邮箱验证码',
@@ -614,7 +614,7 @@ app.get('/api/forums/:slug/topics', async (c) => {
   const slug = c.req.param('slug');
   const { limit, offset } = getPagination(c);
   const { results } = await c.env.DB.prepare(
-    `SELECT t.id, t.title, u.username as author, u.id as user_id, u.tags, u.rating, t.views, t.pinned, t.created_at,
+    `SELECT t.id, t.title, u.username as author, u.id as user_id, u.tags, u.rating, u.role, t.views, t.pinned, t.created_at,
             (SELECT COUNT(*) FROM replies r WHERE r.topic_id = t.id) as reply_count,
             u.last_seen
      FROM topics t
