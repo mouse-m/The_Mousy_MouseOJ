@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import remarkGfm from 'remark-gfm'
@@ -10,6 +10,11 @@ import 'katex/dist/katex.min.css'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { rehypeTableMerge, remarkDirectiveHandler, preprocessContent } from '../markdownPlugins'
+import CodeMirror from '@uiw/react-codemirror'
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
+import { cpp } from '@codemirror/lang-cpp'
+import { autocompletion, CompletionContext } from '@codemirror/autocomplete'
+import { oneDark as cmOneDark } from '@codemirror/theme-one-dark'
 
 function MermaidBlock({ code }) {
   const ref = useRef()
@@ -85,16 +90,16 @@ function Preview({ content }) {
 }
 
 const snippets = {
-  bilibili: '![bilibili](BV)',
-  info: ':::info[信息]\n内容\n:::',
-  success: ':::success[成功]\n内容\n:::',
-  warning: ':::warning[警告]\n内容\n:::',
-  error: ':::error[错误]\n内容\n:::',
-  'align-center': ':::align{center}\n内容\n:::',
-  'align-right': ':::align{right}\n内容\n:::',
-  epigraph: ':::epigraph[来源]\n引言内容\n:::',
-  'cute-table': '::cute-table{tuack}\n| 列1 | 列2 |\n| :-: | :-: |\n| 内容 | 内容 |\n:::',
-  'table-merge': '| 标题1 | 标题2 | 标题3 |\n| :-: | :-: | :-: |\n| A | B | C |\n| ^ | D | E |\n| 跨列 | < | F |',
+  bilibili: '![bilibili]()',
+  info: ':::info[]\n\n:::',
+  success: ':::success[]\n\n:::',
+  warning: ':::warning[]\n\n:::',
+  error: ':::error[]\n\n:::',
+  'align-center': ':::align{center}\n\n:::',
+  'align-right': ':::align{right}\n\n:::',
+  epigraph: ':::epigraph[]\n\n:::',
+  'cute-table': '::cute-table{tuack}\n|  |  |\n| :-: | :-: |\n|  |  |\n:::',
+  'table-merge': '|  |  |  |\n| :-: | :-: | :-: |\n|  |  |  |\n| ^ |  |  |\n|  | < |  |',
 }
 
 const latexCommands = [
@@ -156,111 +161,112 @@ const latexCommands = [
   { cmd: '\\begin{cases}', desc: '分段函数' },
 ]
 
-const directiveCompletions = [
-  { label: 'info[信息]', insert: ':::info[信息]\n\n:::' },
-  { label: 'success[成功]', insert: ':::success[成功]\n\n:::' },
-  { label: 'warning[警告]', insert: ':::warning[警告]\n\n:::' },
-  { label: 'error[错误]', insert: ':::error[错误]\n\n:::' },
-  { label: 'align{center}', insert: ':::align{center}\n\n:::' },
-  { label: 'align{right}', insert: ':::align{right}\n\n:::' },
-  { label: 'epigraph[来源]', insert: ':::epigraph[来源]\n\n:::' },
+const directiveCompletionOptions = [
+  { label: ':::info[信息]', detail: '信息折叠框', apply: ':::info[信息]\n\n:::' },
+  { label: ':::success[成功]', detail: '成功折叠框', apply: ':::success[成功]\n\n:::' },
+  { label: ':::warning[警告]', detail: '警告折叠框', apply: ':::warning[警告]\n\n:::' },
+  { label: ':::error[错误]', detail: '错误折叠框', apply: ':::error[错误]\n\n:::' },
+  { label: ':::align{center}', detail: '居中排版', apply: ':::align{center}\n\n:::' },
+  { label: ':::align{right}', detail: '居右排版', apply: ':::align{right}\n\n:::' },
+  { label: ':::epigraph[来源]', detail: '引言', apply: ':::epigraph[来源]\n\n:::' },
 ]
+
+const latexCompletionOptions = latexCommands.map(c => ({
+  label: c.cmd,
+  detail: c.desc,
+  apply: c.cmd,
+}))
+
+function markdownCompletions(context) {
+  const doc = context.state.doc
+  const pos = context.pos
+  const line = doc.lineAt(pos)
+  const before = line.text.substring(0, pos - line.from)
+
+  const directiveMatch = before.match(/(:{1,3})$/)
+  if (directiveMatch) {
+    const start = pos - directiveMatch[1].length
+    const onlyColons = /^:+$/.test(before.trim())
+    if (onlyColons) {
+      return {
+        from: start,
+        options: directiveCompletionOptions,
+        validFor: /^:{0,3}$/,
+      }
+    }
+  }
+
+  const latexMatch = before.match(/(\\)([a-zA-Z]*)$/)
+  if (latexMatch) {
+    const start = pos - latexMatch[0].length
+    const filter = latexMatch[2].toLowerCase()
+    const options = latexCompletionOptions.filter(c => c.label.includes(filter))
+    if (options.length > 0) {
+      return {
+        from: start,
+        options,
+        validFor: /^\\[a-zA-Z]*$/,
+      }
+    }
+  }
+
+  return null
+}
 
 export default function MarkdownEditor({ value, onChange, minHeight = 200, placeholder = '' }) {
   const [mode, setMode] = useState('split')
-  const [acOpen, setAcOpen] = useState(false)
-  const [acType, setAcType] = useState(null)
-  const [acFilter, setAcFilter] = useState('')
-  const [acIdx, setAcIdx] = useState(0)
   const [showLatex, setShowLatex] = useState(false)
-  const textRef = useRef(null)
-  const acRef = useRef(null)
+  const viewRef = useRef(null)
+
+  const cmExtensions = useMemo(() => [
+    markdown({ base: markdownLanguage }),
+    cpp(),
+    autocompletion({ override: [markdownCompletions] }),
+    cmOneDark,
+    EditorView.theme({
+      '&': { backgroundColor: '#0f172a', color: '#e2e8f0', fontFamily: 'inherit' },
+      '.cm-content': { caretColor: '#38bdf8', fontSize: '0.9rem', fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace" },
+      '.cm-cursor, .cm-dropCursor': { borderLeftColor: '#38bdf8' },
+      '&.cm-focused .cm-selectionBackground, .cm-selectionBackground': { background: 'rgba(56, 189, 248, 0.2) !important' },
+      '.cm-activeLine': { background: 'rgba(56, 189, 248, 0.05)' },
+      '.cm-gutters': { backgroundColor: '#0f172a', color: '#475569', border: 'none' },
+      '.cm-lineNumbers .cm-activeLineGutter': { backgroundColor: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8' },
+      '.cm-tooltip': { background: '#1e293b', border: '1px solid #334155', borderRadius: '6px', fontFamily: 'inherit' },
+      '.cm-tooltip-autocomplete': { '& > ul': { fontFamily: 'inherit' }, '& > ul > li': { padding: '0.3rem 0.6rem', fontSize: '0.85rem' } },
+      'li[aria-selected]': { background: '#334155 !important', color: '#e2e8f0' },
+      '.cm-completionLabel': { color: '#38bdf8' },
+      '.cm-completionDetail': { color: '#64748b', marginLeft: '0.5rem', fontSize: '0.75rem' },
+      '&.cm-focused': { outline: 'none' },
+      '.cm-placeholder': { color: '#475569', fontSize: '0.85rem' },
+      '.cm-scroller': { fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace" },
+    }),
+  ], [])
+
+  const handleCmChange = useCallback((val) => {
+    onChange(val)
+  }, [onChange])
+
+  const handleCmCreate = useCallback((view) => {
+    viewRef.current = view
+  }, [])
 
   const insert = useCallback((text) => {
-    const ta = textRef.current
-    if (!ta) { onChange(value + '\n' + text); return }
-    const start = ta.selectionStart
-    const end = ta.selectionEnd
-    const before = value.substring(0, start)
-    const after = value.substring(end)
-    onChange(before + text + after)
-    requestAnimationFrame(() => {
-      ta.selectionStart = ta.selectionEnd = start + text.length
-      ta.focus()
+    const view = viewRef.current
+    if (!view) return
+    const sel = view.state.selection.main
+    const from = sel.from
+    const to = sel.to
+    view.dispatch({
+      changes: { from, to, insert: text },
+      selection: { anchor: from + text.length },
     })
-  }, [value, onChange])
+    view.focus()
+  }, [])
 
   const insertSnippet = useCallback((key) => {
     const text = snippets[key]
     if (text) insert(text)
   }, [insert])
-
-  const handleInput = useCallback((e) => {
-    const ta = textRef.current
-    if (!ta) return
-    const pos = ta.selectionStart
-    const before = value.substring(0, pos)
-    const lastColon = before.lastIndexOf(':')
-    const lastBackslash = before.lastIndexOf('\\')
-    const lastNewline = Math.max(before.lastIndexOf('\n'), before.lastIndexOf(' '))
-
-    if (lastColon > lastNewline) {
-      const prefix = before.substring(lastColon)
-      if (prefix === ':' || prefix === '::' || prefix === ':::') {
-        setAcType('directive')
-        setAcFilter('')
-        setAcIdx(0)
-        setAcOpen(true)
-        return
-      }
-    }
-
-    if (lastBackslash > lastNewline && before[lastBackslash - 1] !== '\\') {
-      const prefix = before.substring(lastBackslash + 1)
-      setAcType('latex')
-      setAcFilter(prefix)
-      setAcIdx(0)
-      setAcOpen(true)
-      return
-    }
-
-    setAcOpen(false)
-  }, [value])
-
-  const handleKeyDown = useCallback((e) => {
-    if (!acOpen) return
-    const items = acType === 'directive' ? directiveCompletions : latexCommands
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setAcIdx(i => Math.min(i + 1, items.length - 1))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setAcIdx(i => Math.max(i - 1, 0))
-    } else if (e.key === 'Enter' || e.key === 'Tab') {
-      e.preventDefault()
-      const item = items[acIdx]
-      if (item) {
-        const insertText = item.insert || item.cmd
-        const ta = textRef.current
-        if (ta) {
-          const pos = ta.selectionStart
-          const before = value.substring(0, pos)
-          const trigger = acType === 'directive' ? before.lastIndexOf(':') : before.lastIndexOf('\\')
-          if (trigger >= 0) {
-            const newVal = before.substring(0, trigger) + insertText + value.substring(pos)
-            onChange(newVal)
-            requestAnimationFrame(() => {
-              ta.selectionStart = ta.selectionEnd = trigger + insertText.length
-              ta.focus()
-            })
-          }
-        }
-      }
-      setAcOpen(false)
-    } else if (e.key === 'Escape') {
-      setAcOpen(false)
-    }
-  }, [acOpen, acType, acIdx, value, onChange])
 
   const toolBtn = (label, title, snippetKey) => (
     <button key={snippetKey} type="button" title={title} onClick={() => insertSnippet(snippetKey)}
@@ -269,9 +275,6 @@ export default function MarkdownEditor({ value, onChange, minHeight = 200, place
         color: '#94a3b8', cursor: 'pointer', fontSize: '0.78rem', whiteSpace: 'nowrap'
       }}>{label}</button>
   )
-
-  const acItems = acType === 'directive' ? directiveCompletions
-    : acType === 'latex' ? latexCommands.filter(c => c.cmd.includes(acFilter)) : []
 
   return (
     <div className="markdown-editor" style={{ border: '1px solid #334155', borderRadius: 6, overflow: 'hidden' }}>
@@ -300,67 +303,41 @@ export default function MarkdownEditor({ value, onChange, minHeight = 200, place
             color: showLatex ? '#93c5fd' : '#94a3b8', cursor: 'pointer', fontSize: '0.78rem'
           }}>Σ LaTeX</button>
       </div>
-      <div style={{ position: 'relative', minHeight }}>
+      <div style={{ display: 'flex', minHeight: mode === 'preview' ? minHeight : undefined }}>
         {(mode === 'edit' || mode === 'split') && (
-          <>
-            <textarea ref={textRef} value={value}
-              onChange={e => { onChange(e.target.value); setAcOpen(false) }}
-              onInput={handleInput} onKeyDown={handleKeyDown}
+          <div style={{
+            flex: mode === 'preview' ? '0 0 0%' : mode === 'split' ? '0 0 50%' : '1 1 100%',
+            minHeight, overflow: 'hidden',
+          }}>
+            <CodeMirror
+              value={value}
+              onChange={handleCmChange}
+              extensions={cmExtensions}
+              onCreateEditor={handleCmCreate}
               placeholder={placeholder}
-              style={{
-                width: mode === 'split' ? '50%' : '100%', border: 'none', borderRadius: 0,
-                resize: 'vertical', fontFamily: 'inherit', minHeight,
-                display: mode === 'edit' ? 'block' : 'inline-block', verticalAlign: 'top'
-              }} />
-            {acOpen && acItems.length > 0 && (
-              <div ref={acRef} style={{
-                position: 'absolute', left: 0, top: 0, zIndex: 100,
-                background: '#1e293b', border: '1px solid #334155', borderRadius: 6,
-                maxHeight: 240, overflowY: 'auto', minWidth: 200,
-                boxShadow: '0 4px 16px rgba(0,0,0,0.4)'
-              }}>
-                {acItems.map((item, i) => (
-                  <div key={i} onClick={() => {
-                    const text = item.insert || item.cmd
-                    const ta = textRef.current
-                    if (ta) {
-                      const pos = ta.selectionStart
-                      const before = value.substring(0, pos)
-                      const trigger = acType === 'directive' ? before.lastIndexOf(':') : before.lastIndexOf('\\')
-                      if (trigger >= 0) {
-                        onChange(before.substring(0, trigger) + text + value.substring(pos))
-                        requestAnimationFrame(() => {
-                          ta.selectionStart = ta.selectionEnd = trigger + text.length
-                          ta.focus()
-                        })
-                      }
-                    }
-                    setAcOpen(false)
-                  }}
-                    style={{
-                      padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.85rem',
-                      background: i === acIdx ? '#334155' : 'transparent',
-                      color: i === acIdx ? '#e2e8f0' : '#94a3b8'
-                    }}>
-                    <code style={{ color: '#38bdf8' }}>{item.label || item.cmd}</code>
-                    {item.desc && <span style={{ marginLeft: '0.5rem', color: '#64748b', fontSize: '0.75rem' }}>{item.desc}</span>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
+              height={mode === 'split' ? `${Math.max(minHeight, 200)}px` : undefined}
+              style={{ height: '100%' }}
+              basicSetup={{
+                lineNumbers: false,
+                foldGutter: false,
+                highlightActiveLineGutter: false,
+                bracketMatching: true,
+                closeBrackets: true,
+                highlightActiveLine: true,
+                autocompletion: true,
+              }}
+            />
+          </div>
         )}
-        {mode === 'preview' || mode === 'split' ? (
-          mode === 'split' ? (
-            <div style={{ position: 'absolute', right: 0, top: 0, width: '50%', height: '100%', padding: '0.75rem', overflow: 'auto', background: '#0f172a', borderLeft: '1px solid #334155' }}>
-              <Preview content={value} />
-            </div>
-          ) : (
-            <div style={{ padding: '0.75rem', minHeight, overflow: 'auto', background: '#0f172a' }}>
-              <Preview content={value} />
-            </div>
-          )
-        ) : null}
+        {(mode === 'preview' || mode === 'split') && (
+          <div style={{
+            flex: mode === 'preview' ? '1 1 100%' : '0 0 50%',
+            padding: '0.75rem', overflow: 'auto', background: '#0f172a', minHeight,
+            borderLeft: mode === 'split' ? '1px solid #334155' : 'none'
+          }}>
+            <Preview content={value} />
+          </div>
+        )}
       </div>
 
       {showLatex && (

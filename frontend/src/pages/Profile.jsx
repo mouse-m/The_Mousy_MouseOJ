@@ -51,6 +51,14 @@ export default function Profile() {
     } catch {}
   }
 
+  const handleSetAdmin = async () => {
+    const newRole = profile.role === 'admin' ? 'user' : 'admin'
+    try {
+      await api.patch(`/users/${id}/setadmin`, { role: newRole })
+      setProfile(p => ({ ...p, role: newRole }))
+    } catch (e) { alert(e.message) }
+  }
+
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -121,6 +129,12 @@ export default function Profile() {
                 </button>
                 {showMutual && <span className="badge badge-ok" style={{ fontSize: '0.65rem' }}>互相关注</span>}
               </>
+            )}
+            {me?.id === 1 && !isMe && (
+              <button className={`btn btn-sm ${profile.role === 'admin' ? 'btn-secondary' : ''}`}
+                onClick={handleSetAdmin} style={{ whiteSpace: 'nowrap' }}>
+                {profile.role === 'admin' ? '取消管理员' : '设为管理员'}
+              </button>
             )}
           </div>
         </div>

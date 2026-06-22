@@ -1058,6 +1058,18 @@ app.put('/api/users/me/tags', requireAuth(), async (c) => {
   return c.json({ tags: arr });
 });
 
+// 设置/取消管理员 (仅 uid=1)
+app.patch('/api/users/:id/setadmin', requireAuth(), async (c) => {
+  const me = c.get('user');
+  if (me.id !== 1) return err(c, '无权操作', 403);
+  const id = c.req.param('id');
+  const { role } = await c.req.json();
+  if (!['user', 'admin'].includes(role)) return err(c, '无效角色');
+  if (parseInt(id, 10) === 1) return err(c, '不能修改自己的权限');
+  await c.env.DB.prepare('UPDATE users SET role = ? WHERE id = ?').bind(role, id).run();
+  return c.json({ success: true });
+});
+
 // 获取当前登录用户完整信息 (含 tags / status)
 app.get('/api/users/me', requireAuth(), async (c) => {
   const user = c.get('user');
