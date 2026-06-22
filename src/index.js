@@ -167,23 +167,6 @@ app.post('/api/auth/register', async (c) => {
   return c.json({ token, user: result });
 });
 
-app.post('/api/auth/login', async (c) => {
-  const { username, password } = await c.req.json();
-  if (!username || !password) return err(c, '用户名和密码不能为空');
-
-  const hash = await sha256(password + c.env.JWT_SECRET);
-  const user = await c.env.DB.prepare(
-    'SELECT id, username, role FROM users WHERE username = ? AND password = ?'
-  ).bind(username, hash).first();
-  if (!user) return err(c, '用户名或密码错误', 401);
-
-  const token = await signToken(
-    { id: user.id, username: user.username, role: user.role },
-    c.env.JWT_SECRET
-  );
-  return c.json({ token, user });
-});
-
 // 修改密码 (需要旧密码)
 app.patch('/api/auth/password', requireAuth(), async (c) => {
   const user = c.get('user');
@@ -209,22 +192,37 @@ app.post('/api/auth/verify-password', requireAuth(), async (c) => {
   return c.json({ success: true });
 });
 
-// 发送邮件 (通过 SendGrid API)
+// 发送邮件 (MailChannels 免费 + SendGrid 备选)
 async function sendEmail(env, to, subject, html) {
-  if (!env.SENDGRID_API_KEY) return;
-  await fetch('https://api.sendgrid.com/v3/mail/send', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${env.SENDGRID_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      personalizations: [{ to: [{ email: to }] }],
-      from: { email: 'admin@mouseoj.cc.cd', name: 'MouseOJ' },
-      subject,
-      content: [{ type: 'text/html', value: html }],
-    }),
-  });
+  try {
+    await fetch('https://api.mailchannels.net/tx/v1/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: to }] }],
+        from: { email: 'mousy@mouseoj.cc.cd', name: 'MouseOJ' },
+        subject,
+        content: [{ type: 'text/html', value: html }],
+      }),
+    });
+  } catch {}
+  if (env.SENDGRID_API_KEY) {
+    try {
+      await fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${env.SENDGRID_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: to }] }],
+          from: { email: 'mousy@mouseoj.cc.cd', name: 'MouseOJ' },
+          subject,
+          content: [{ type: 'text/html', value: html }],
+        }),
+      });
+    } catch {}
+  }
 }
 
 // 忘记密码
@@ -254,6 +252,94 @@ app.post('/api/auth/reset-password', async (c) => {
     'UPDATE users SET password = ?, reset_code = NULL WHERE id = ?'
   ).bind(hash, user.id).run();
   return c.json({ success: true });
+});
+
+// 邮箱注册 (发送验证码)
+app.post('/api/auth/register-email', async (c) => {
+  const { email, username, password } = await c.req.json();
+  if (!email || !username || !password) return err(c, '参数不完整');
+  if (username.length < 3 || username.length > 20) return err(c, '用户名 3-20 个字符');
+  if (password.length < 6) return err(c, '密码至少 6 位');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return err(c, '邮箱格式不正确');
+
+  const existingEmail = await c.env.DB.prepare('SELECT id FROM users WHERE email = ? AND email != ?').bind(email, '').first();
+  if (existingEmail) return err(c, '邮箱已被注册');
+  const existingUser = await c.env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(username).first();
+  if (existingUser) return err(c, '用户名已存在');
+
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  const hash = await sha256(password + c.env.JWT_SECRET);
+
+  await c.env.DB.prepare(
+    'INSERT INTO users (username, password, email, status, verify_code, verify_expires) VALUES (?, ?, ?, ?, ?, ?)'
+  ).bind(username, hash, email, 'unverified', code, expires).run();
+
+  await sendEmail(c.env, email, 'MouseOJ 邮箱验证码',
+    `<p>你的验证码: <b style="font-size:1.2em;color:#38bdf8">${code}</b></p><p>有效期 10 分钟</p>`);
+
+  return c.json({ success: true, message: '验证码已发送到邮箱' });
+});
+
+// 验证邮箱
+app.post('/api/auth/verify-email', async (c) => {
+  const { email, code } = await c.req.json();
+  if (!email || !code) return err(c, '参数不完整');
+
+  const user = await c.env.DB.prepare(
+    'SELECT id, username, role, verify_code, verify_expires, status FROM users WHERE email = ?'
+  ).bind(email).first();
+  if (!user) return err(c, '用户不存在');
+  if (user.status !== 'unverified') return err(c, '邮箱已验证');
+  if (user.verify_code !== code) return err(c, '验证码错误');
+  if (new Date(user.verify_expires) < new Date()) return err(c, '验证码已过期');
+
+  await c.env.DB.prepare(
+    'UPDATE users SET email_verified = 1, status = ?, verify_code = NULL, verify_expires = NULL WHERE email = ?'
+  ).bind('active', email).run();
+
+  await c.env.DB.prepare(
+    'INSERT INTO activities (user_id, type, content) VALUES (?, ?, ?)'
+  ).bind(user.id, 'register', '注册了账号').run();
+
+  const token = await signToken(
+    { id: user.id, username: user.username, role: user.role },
+    c.env.JWT_SECRET
+  );
+  return c.json({ token, user: { id: user.id, username: user.username, role: user.role } });
+});
+
+// 重新发送验证码
+app.post('/api/auth/resend-code', async (c) => {
+  const { email } = await c.req.json();
+  if (!email) return err(c, '请输入邮箱');
+  const user = await c.env.DB.prepare('SELECT id, status FROM users WHERE email = ?').bind(email).first();
+  if (!user) return err(c, '用户不存在');
+  if (user.status !== 'unverified') return err(c, '邮箱已验证');
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  await c.env.DB.prepare('UPDATE users SET verify_code = ?, verify_expires = ? WHERE email = ?').bind(code, expires, email).run();
+  await sendEmail(c.env, email, 'MouseOJ 邮箱验证码', `<p>你的验证码: <b style="font-size:1.2em;color:#38bdf8">${code}</b></p><p>有效期 10 分钟</p>`);
+  return c.json({ success: true });
+});
+
+// 登录 (支持邮箱或用户名)
+app.post('/api/auth/login', async (c) => {
+  const { login, password } = await c.req.json();
+  if (!login || !password) return err(c, '用户名/邮箱和密码不能为空');
+
+  const hash = await sha256(password + c.env.JWT_SECRET);
+  const user = await c.env.DB.prepare(
+    'SELECT id, username, role, status FROM users WHERE (username = ? OR email = ?) AND password = ?'
+  ).bind(login, login, hash).first();
+  if (!user) return err(c, '用户名/邮箱或密码错误', 401);
+  if (user.status === 'unverified') return err(c, '请先验证邮箱', 403);
+
+  const token = await signToken(
+    { id: user.id, username: user.username, role: user.role },
+    c.env.JWT_SECRET
+  );
+  return c.json({ token, user });
 });
 
 // ============================================================

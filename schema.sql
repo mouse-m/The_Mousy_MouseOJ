@@ -11,9 +11,12 @@ CREATE TABLE IF NOT EXISTS users (
   username   TEXT UNIQUE NOT NULL,
   password   TEXT NOT NULL,
   email      TEXT DEFAULT '',
+  email_verified INTEGER DEFAULT 0,
+  verify_code TEXT DEFAULT '',
+  verify_expires TEXT DEFAULT '',
   reset_code TEXT DEFAULT '',
   tags       TEXT DEFAULT '',
-  status     TEXT DEFAULT 'active',    -- active / banned / silenced
+  status     TEXT DEFAULT 'active',    -- active / banned / silenced / unverified
   avatar     TEXT DEFAULT '',
   bio        TEXT DEFAULT '',
   role       TEXT DEFAULT 'user',

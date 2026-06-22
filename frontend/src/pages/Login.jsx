@@ -3,11 +3,11 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
 
 export default function Login() {
-  const [username, setUsername] = useState('')
+  const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
+  const { login: doLogin } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
@@ -15,7 +15,7 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      await login(username, password)
+      await doLogin(login, password)
       navigate('/')
     } catch (err) {
       setError(err.message)
@@ -24,13 +24,15 @@ export default function Login() {
     }
   }
 
+  const isEmail = login.includes('@')
+
   return (
     <div className="container" style={{ maxWidth: 400, margin: '4rem auto' }}>
       <h1 className="page-title text-center">登录 <span>MouseOJ</span></h1>
       <form onSubmit={handleSubmit} className="card">
         <div className="form-group">
-          <label>用户名</label>
-          <input value={username} onChange={e => setUsername(e.target.value)} required />
+          <label>用户名 / 邮箱</label>
+          <input value={login} onChange={e => setLogin(e.target.value)} required placeholder="用户名 或 邮箱" />
         </div>
         <div className="form-group">
           <label>密码</label>

@@ -39,7 +39,7 @@ export default function ForumTopics() {
                   {t.pinned ? <span style={{ color: '#f59e0b' }}>[置顶] </span> : ''}{t.title}
                 </Link>
                 <div className="text-sm" style={{ marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span className={`${t.online ? 'online-dot' : 'offline-dot'}`}></span>
+                  {t.online && <span className="online-dot"></span>}
                   <span style={{ color: usernameColor(t.tags?.includes('admin') ? 'admin' : 'user') }}>
                     {t.author}
                   </span>
