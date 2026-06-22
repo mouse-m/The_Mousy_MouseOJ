@@ -107,7 +107,7 @@ export default function Profile() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <span className={`${profile.online ? 'online-dot' : 'offline-dot'}`}></span>
-              <h1 style={{ fontSize: '1.3rem', fontWeight: 700, margin: 0, color: usernameColor(profile.role) }}>
+              <h1 style={{ fontSize: '1.3rem', fontWeight: 700, margin: 0, color: usernameColor(profile.role, profile.rating) }}>
                 {profile.username}
               </h1>
               {profile.role === 'admin' && <span className="badge badge-ok" style={{ fontSize: '0.7rem' }}>管理员</span>}
@@ -204,7 +204,7 @@ export default function Profile() {
                     <span style={{ fontSize: '0.85rem', color: '#64748b' }}>{formatTime(a.created_at)}</span>
                   </div>
                   <div style={{ fontSize: '0.9rem', color: '#e2e8f0' }}>
-                    <span style={{ color: usernameColor(a.role), fontWeight: 600 }}>{a.username}</span>
+                    <span style={{ color: usernameColor(a.role, a.rating), fontWeight: 600 }}>{a.username}</span>
                     <span style={{ marginLeft: '0.35rem', color: '#94a3b8' }}>{a.content}</span>
                   </div>
                   {a.type === 'submit' && a.ref_id && (

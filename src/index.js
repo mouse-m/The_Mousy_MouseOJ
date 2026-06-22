@@ -614,7 +614,7 @@ app.get('/api/forums/:slug/topics', async (c) => {
   const slug = c.req.param('slug');
   const { limit, offset } = getPagination(c);
   const { results } = await c.env.DB.prepare(
-    `SELECT t.id, t.title, u.username as author, u.id as user_id, u.tags, t.views, t.pinned, t.created_at,
+    `SELECT t.id, t.title, u.username as author, u.id as user_id, u.tags, u.rating, t.views, t.pinned, t.created_at,
             (SELECT COUNT(*) FROM replies r WHERE r.topic_id = t.id) as reply_count,
             u.last_seen
      FROM topics t
@@ -1346,7 +1346,7 @@ app.get('/api/home', async (c) => {
     // 动态 (仅已登录时显示关注的人)
     user
       ? c.env.DB.prepare(
-          `SELECT a.*, u.username, u.avatar, u.role FROM activities a
+          `SELECT a.*, u.username, u.avatar, u.role, u.rating FROM activities a
            JOIN users u ON u.id = a.user_id
            JOIN follows f ON f.followee_id = a.user_id
            WHERE f.follower_id = ?
@@ -1629,14 +1629,14 @@ app.get('/api/activities', async (c) => {
   const userId = c.req.query('user_id');
   if (userId) {
     const { results } = await c.env.DB.prepare(
-      `SELECT a.*, u.username, u.avatar, u.role FROM activities a
+      `SELECT a.*, u.username, u.avatar, u.role, u.rating FROM activities a
        JOIN users u ON u.id = a.user_id
        WHERE a.user_id = ? ORDER BY a.id DESC LIMIT ? OFFSET ?`
     ).bind(userId, limit, offset).all();
     return c.json(results);
   }
   const { results } = await c.env.DB.prepare(
-    `SELECT a.*, u.username, u.avatar, u.role FROM activities a
+    `SELECT a.*, u.username, u.avatar, u.role, u.rating FROM activities a
      JOIN users u ON u.id = a.user_id
      ORDER BY a.id DESC LIMIT ? OFFSET ?`
   ).bind(limit, offset).all();
@@ -1648,7 +1648,7 @@ app.get('/api/feed', requireAuth(), async (c) => {
   const user = c.get('user');
   const { limit, offset } = getPagination(c);
   const { results } = await c.env.DB.prepare(
-    `SELECT a.*, u.username, u.avatar, u.role FROM activities a
+    `SELECT a.*, u.username, u.avatar, u.role, u.rating FROM activities a
      JOIN users u ON u.id = a.user_id
      JOIN follows f ON f.followee_id = a.user_id
      WHERE f.follower_id = ?

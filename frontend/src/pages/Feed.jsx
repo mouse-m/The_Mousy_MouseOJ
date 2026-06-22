@@ -59,7 +59,7 @@ export default function Feed() {
         <div key={a.id} className="card" style={{ padding: '0.75rem 1rem' }}>
           <div className="flex gap-1" style={{ alignItems: 'center' }}>
             <img src={getAvatarUrl(a.username, a.avatar)} alt="" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
-            <Link to={`/users/${a.user_id}`} style={{ color: usernameColor(a.role), fontWeight: 600, fontSize: '0.9rem' }}>{a.username}</Link>
+            <Link to={`/users/${a.user_id}`} style={{ color: usernameColor(a.role, a.rating), fontWeight: 600, fontSize: '0.9rem' }}>{a.username}</Link>
             <span className="text-sm" style={{ color: '#94a3b8', flex: 1 }} dangerouslySetInnerHTML={{ __html: renderContent(a.content) }} />
             <span className="text-sm text-muted" style={{ whiteSpace: 'nowrap' }}>{formatTime(a.created_at)}</span>
           </div>

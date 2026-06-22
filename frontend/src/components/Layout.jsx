@@ -32,7 +32,7 @@ export default function Layout({ children }) {
     } catch {}
   }, [user])
 
-  useEffect(() => { loadNotifCount(); const id = setInterval(loadNotifCount, 30000); return () => clearInterval(id) }, [loadNotifCount])
+  useEffect(() => { loadNotifCount(); const id = setInterval(loadNotifCount, 60000); return () => clearInterval(id) }, [loadNotifCount])
 
   useEffect(() => {
     if (showNotifs) loadNotifs()
