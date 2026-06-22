@@ -241,7 +241,8 @@ export default function Profile() {
           <div className="card mt-2" style={{ padding: '1rem' }}>
             <Link to={`/users/${id}/following`} className="btn btn-sm btn-secondary" style={{ marginRight: '0.5rem' }}>关注列表</Link>
             <Link to={`/users/${id}/followers`} className="btn btn-sm btn-secondary" style={{ marginRight: '0.5rem' }}>粉丝列表</Link>
-            <Link to={`/users/${id}/activities`} className="btn btn-sm btn-secondary">动态</Link>
+            <Link to={`/users/${id}/activities`} className="btn btn-sm btn-secondary" style={{ marginRight: '0.5rem' }}>动态</Link>
+            {isMe && <Link to="/bookmarks" className="btn btn-sm btn-secondary">我的收藏</Link>}
           </div>
         </>
       )}

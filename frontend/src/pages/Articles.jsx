@@ -24,14 +24,14 @@ export default function Articles() {
       <div className="card" style={{ padding: 0 }}>
         <table>
           <thead>
-            <tr><th>标题</th><th>作者</th><th>点赞</th><th>时间</th></tr>
+            <tr><th>标题</th><th>作者</th><th>赞/踩</th><th>时间</th></tr>
           </thead>
           <tbody>
             {articles.map(a => (
               <tr key={a.id}>
                 <td><Link to={`/articles/${a.id}`}>{a.title}</Link></td>
                 <td className="text-sm text-muted"><Link to={`/users/${a.user_id}`} className="text-muted">{a.author}</Link></td>
-                <td className="text-sm text-muted">{a.likes}</td>
+                <td className="text-sm text-muted">{a.likes}/{a.dislikes}</td>
                 <td className="text-sm text-muted">{formatTime(a.created_at)}</td>
               </tr>
             ))}

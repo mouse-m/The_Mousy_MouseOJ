@@ -711,7 +711,7 @@ app.post('/api/topics/:id/replies', requireAuth(), async (c) => {
       if (!mentionedUsers.has(username)) {
         mentionedUsers.add(username);
         const mentioned = await c.env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(username).first();
-        if (mentioned && mentioned.id !== user.id && mentioned.id !== topic.user_id) {
+        if (mentioned && mentioned.id !== user.id) {
           await createNotification(c.env.DB, mentioned.id, 'mention',
             `有人在帖子中提到了你`, `${user.username} 在「${topic.title}」中提到了 @${username}`, topicId);
         }
@@ -763,7 +763,7 @@ app.delete('/api/topics/:id', requireAuth(), async (c) => {
 app.get('/api/articles', async (c) => {
   const { limit, offset } = getPagination(c);
   const { results } = await c.env.DB.prepare(
-    `SELECT a.id, u.id as user_id, a.title, u.username as author, a.likes, a.created_at
+    `SELECT a.id, u.id as user_id, a.title, u.username as author, a.likes, a.dislikes, a.created_at
      FROM articles a JOIN users u ON a.user_id = u.id
      ORDER BY a.created_at DESC LIMIT ? OFFSET ?`
   ).bind(limit, offset).all();
@@ -772,11 +772,28 @@ app.get('/api/articles', async (c) => {
 
 app.get('/api/articles/:id', async (c) => {
   const id = c.req.param('id');
+  const user = c.get('user');
   const article = await c.env.DB.prepare(
     `SELECT a.*, u.username as author
      FROM articles a JOIN users u ON a.user_id = u.id WHERE a.id = ?`
   ).bind(id).first();
   if (!article) return err(c, '文章不存在', 404);
+
+  if (user) {
+    const liked = await c.env.DB.prepare(
+      'SELECT 1 FROM article_likes WHERE article_id = ? AND user_id = ?'
+    ).bind(id, user.id).first();
+    const disliked = await c.env.DB.prepare(
+      'SELECT 1 FROM article_dislikes WHERE article_id = ? AND user_id = ?'
+    ).bind(id, user.id).first();
+    const bookmarked = await c.env.DB.prepare(
+      'SELECT 1 FROM bookmarks WHERE article_id = ? AND user_id = ?'
+    ).bind(id, user.id).first();
+    article.liked = !!liked;
+    article.disliked = !!disliked;
+    article.bookmarked = !!bookmarked;
+  }
+
   return c.json(article);
 });
 
@@ -822,6 +839,167 @@ app.post('/api/articles/:id/like', requireAuth(), async (c) => {
     ).bind(articleId).run();
     return c.json({ liked: true });
   }
+});
+
+// 点踩文章 (toggle，与点赞互斥)
+app.post('/api/articles/:id/dislike', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const articleId = c.req.param('id');
+
+  const existing = await c.env.DB.prepare(
+    'SELECT 1 FROM article_dislikes WHERE article_id = ? AND user_id = ?'
+  ).bind(articleId, user.id).first();
+
+  if (existing) {
+    await c.env.DB.prepare(
+      'DELETE FROM article_dislikes WHERE article_id = ? AND user_id = ?'
+    ).bind(articleId, user.id).run();
+    await c.env.DB.prepare(
+      'UPDATE articles SET dislikes = dislikes - 1 WHERE id = ?'
+    ).bind(articleId).run();
+    return c.json({ disliked: false });
+  } else {
+    // 如果已点赞，先取消赞
+    const wasLiked = await c.env.DB.prepare(
+      'SELECT 1 FROM article_likes WHERE article_id = ? AND user_id = ?'
+    ).bind(articleId, user.id).first();
+    if (wasLiked) {
+      await c.env.DB.prepare(
+        'DELETE FROM article_likes WHERE article_id = ? AND user_id = ?'
+      ).bind(articleId, user.id).run();
+      await c.env.DB.prepare(
+        'UPDATE articles SET likes = likes - 1 WHERE id = ?'
+      ).bind(articleId).run();
+    }
+
+    await c.env.DB.prepare(
+      'INSERT INTO article_dislikes (article_id, user_id) VALUES (?, ?)'
+    ).bind(articleId, user.id).run();
+    await c.env.DB.prepare(
+      'UPDATE articles SET dislikes = dislikes + 1 WHERE id = ?'
+    ).bind(articleId).run();
+    return c.json({ disliked: true });
+  }
+});
+
+// 收藏/取消收藏文章 (toggle)
+app.post('/api/articles/:id/bookmark', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const articleId = c.req.param('id');
+
+  const existing = await c.env.DB.prepare(
+    'SELECT 1 FROM bookmarks WHERE user_id = ? AND article_id = ?'
+  ).bind(user.id, articleId).first();
+
+  if (existing) {
+    await c.env.DB.prepare(
+      'DELETE FROM bookmarks WHERE user_id = ? AND article_id = ?'
+    ).bind(user.id, articleId).run();
+    return c.json({ bookmarked: false });
+  } else {
+    await c.env.DB.prepare(
+      'INSERT INTO bookmarks (user_id, article_id) VALUES (?, ?)'
+    ).bind(user.id, articleId).run();
+    return c.json({ bookmarked: true });
+  }
+});
+
+// 获取用户收藏的文章列表
+app.get('/api/bookmarks', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const { limit, offset } = getPagination(c);
+  const { results } = await c.env.DB.prepare(
+    `SELECT a.id, a.title, a.likes, a.dislikes, a.created_at, u.username as author
+     FROM bookmarks b JOIN articles a ON b.article_id = a.id
+     JOIN users u ON a.user_id = u.id
+     WHERE b.user_id = ?
+     ORDER BY b.created_at DESC LIMIT ? OFFSET ?`
+  ).bind(user.id, limit, offset).all();
+  return c.json(results);
+});
+
+// 文章评论
+app.get('/api/articles/:id/comments', async (c) => {
+  const articleId = c.req.param('id');
+  const { limit, offset } = getPagination(c);
+  const { results } = await c.env.DB.prepare(
+    `SELECT c.*, u.username, u.avatar, u.role, u.rating
+     FROM article_comments c JOIN users u ON c.user_id = u.id
+     WHERE c.article_id = ?
+     ORDER BY c.created_at ASC LIMIT ? OFFSET ?`
+  ).bind(articleId, limit, offset).all();
+  return c.json(results);
+});
+
+app.post('/api/articles/:id/comments', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const articleId = c.req.param('id');
+  const { content } = await c.req.json();
+  if (!content?.trim()) return err(c, '评论内容不能为空');
+
+  const article = await c.env.DB.prepare('SELECT id, user_id, title FROM articles WHERE id = ?').bind(articleId).first();
+  if (!article) return err(c, '文章不存在', 404);
+
+  const result = await c.env.DB.prepare(
+    'INSERT INTO article_comments (article_id, user_id, content) VALUES (?, ?, ?) RETURNING id'
+  ).bind(articleId, user.id, content).first();
+
+  return c.json({ id: result.id });
+});
+
+app.delete('/api/comments/:id', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const commentId = c.req.param('id');
+
+  const comment = await c.env.DB.prepare(
+    'SELECT * FROM article_comments WHERE id = ?'
+  ).bind(commentId).first();
+  if (!comment) return err(c, '评论不存在', 404);
+  if (comment.user_id !== user.id && user.role !== 'admin') return err(c, '无权删除', 403);
+
+  await c.env.DB.prepare('DELETE FROM article_comments WHERE id = ?').bind(commentId).run();
+  return c.json({ success: true });
+});
+
+// 动态删除
+app.delete('/api/activities/:id', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const activityId = c.req.param('id');
+
+  const act = await c.env.DB.prepare('SELECT * FROM activities WHERE id = ?').bind(activityId).first();
+  if (!act) return err(c, '动态不存在', 404);
+  if (act.user_id !== user.id && user.role !== 'admin') return err(c, '无权删除', 403);
+
+  await c.env.DB.prepare('DELETE FROM activities WHERE id = ?').bind(activityId).run();
+  return c.json({ success: true });
+});
+
+// 动态回复
+app.post('/api/activities/:id/replies', requireAuth(), async (c) => {
+  const user = c.get('user');
+  const activityId = c.req.param('id');
+  const { content } = await c.req.json();
+  if (!content?.trim()) return err(c, '回复内容不能为空');
+
+  const act = await c.env.DB.prepare('SELECT id FROM activities WHERE id = ?').bind(activityId).first();
+  if (!act) return err(c, '动态不存在', 404);
+
+  const result = await c.env.DB.prepare(
+    'INSERT INTO activity_replies (activity_id, user_id, content) VALUES (?, ?, ?) RETURNING id'
+  ).bind(activityId, user.id, content).first();
+
+  return c.json({ id: result.id });
+});
+
+app.get('/api/activities/:id/replies', async (c) => {
+  const activityId = c.req.param('id');
+  const { results } = await c.env.DB.prepare(
+    `SELECT r.*, u.username, u.avatar, u.role, u.rating
+     FROM activity_replies r JOIN users u ON r.user_id = u.id
+     WHERE r.activity_id = ?
+     ORDER BY r.created_at ASC`
+  ).bind(activityId).all();
+  return c.json(results);
 });
 
 // ============================================================

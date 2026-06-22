@@ -136,6 +136,46 @@ CREATE TABLE IF NOT EXISTS article_likes (
   PRIMARY KEY (article_id, user_id)
 );
 
+-- ─── 文章点踩记录 ───
+CREATE TABLE IF NOT EXISTS article_dislikes (
+  article_id INTEGER NOT NULL,
+  user_id    INTEGER NOT NULL,
+  PRIMARY KEY (article_id, user_id)
+);
+
+-- ─── 文章收藏 ───
+CREATE TABLE IF NOT EXISTS bookmarks (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL,
+  article_id INTEGER NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (article_id) REFERENCES articles(id),
+  UNIQUE(user_id, article_id)
+);
+
+-- ─── 文章评论 ───
+CREATE TABLE IF NOT EXISTS article_comments (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  article_id INTEGER NOT NULL,
+  user_id    INTEGER NOT NULL,
+  content    TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (article_id) REFERENCES articles(id),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- ─── 动态回复 ───
+CREATE TABLE IF NOT EXISTS activity_replies (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  activity_id INTEGER NOT NULL,
+  user_id     INTEGER NOT NULL,
+  content     TEXT NOT NULL,
+  created_at  TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (activity_id) REFERENCES activities(id),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 -- ─── 比赛 ───
 CREATE TABLE IF NOT EXISTS contests (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
