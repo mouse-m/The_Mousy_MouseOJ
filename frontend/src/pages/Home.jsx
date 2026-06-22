@@ -6,11 +6,16 @@ import { formatTime, getAvatarUrl, usernameColor, renderContent } from '../utils
 
 export default function Home() {
   const [data, setData] = useState(null)
+  const [onlineUsers, setOnlineUsers] = useState([])
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin' || user?.id === 1
 
   useEffect(() => {
     api.get('/home').then(setData).catch(() => {})
+    const fetchOnline = () => api.get('/users/online').then(setOnlineUsers).catch(() => {})
+    fetchOnline()
+    const iv = setInterval(fetchOnline, 60000)
+    return () => clearInterval(iv)
   }, [])
 
   if (!data) return <div className="container"><div className="loading">加载中...</div></div>
@@ -36,6 +41,26 @@ export default function Home() {
               <div className="text-sm text-muted">{formatTime(a.created_at)}</div>
             </Link>
           ))}
+        </div>
+      )}
+
+      {onlineUsers.length > 0 && (
+        <div className="card mb-2">
+          <div className="card-header" style={{ borderBottom: 'none', marginBottom: 0, paddingBottom: 0 }}>
+            <h2>在线用户 ({onlineUsers.length})</h2>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', paddingTop: '0.5rem' }}>
+            {onlineUsers.map(u => (
+              <Link key={u.id} to={`/users/${u.id}`} className="text-sm" style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                padding: '0.2rem 0.5rem', borderRadius: 4, background: '#1e293b', color: '#94a3b8', textDecoration: 'none'
+              }}>
+                <span className="online-dot" style={{ width: 6, height: 6 }}></span>
+                {u.username}
+                {u.tags?.map(t => <span key={t} className="user-tag">{t}</span>)}
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 

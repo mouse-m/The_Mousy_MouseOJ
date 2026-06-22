@@ -9,24 +9,12 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "mouse-oj-db"
-database_id = "b9129b22-f602-43d3-8bf4-e740d7affddb"
+database_id = "your-d1-database-id-here"
 
 [vars]
-JWT_SECRET = "79693fc4325746cbc2fae12d5f3c84c78cd1bc33b6b28f958a9ffd8f61330f27"
+JWT_SECRET = "your-jwt-secret-here"
 # Vjudge Cookie 用 secret 注入，不写在这里：
 #   npx wrangler secret put VJUDGE_COOKIE
 
 [observability]
 enabled = false
-head_sampling_rate = 1
-
-[observability.logs]
-enabled = true
-head_sampling_rate = 1
-persist = true
-invocation_logs = true
-
-[observability.traces]
-enabled = true
-persist = true
-head_sampling_rate = 1
